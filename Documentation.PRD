@@ -1,0 +1,107 @@
+# Product Requirement Document (PRD): UCH 1 Heat Rate Analysis Tool
+
+## 1. Product Overview
+**Product Name:** UCH 1 Heat Rate Analysis Tool
+**Version:** 2026.1
+**Primary Goal:** Provide plant engineers with a robust performance monitoring system for Gas Turbines GT1A, GT1B, and GT1C at the UCH 1 unit. The tool calculates corrected performance metrics to evaluate equipment health and efficiency independently of varying ambient conditions and operational parameters.
+
+---
+
+## 2. Target Audience
+- **Plant Engineers:** Primary users who analyze turbine performance, identify degradation, and plan maintenance (e.g., Offline Water Washes).
+- **Operations Managers:** Secondary users who monitor total plant heat rate and output capacity.
+
+---
+
+## 3. Functional Requirements
+
+### 3.1 Data Ingestion & Preprocessing
+- **Source Integration:** The tool must ingest data from the local Excel workbook (`UCH 1 Heat Rate Analysis Specific Date Only.xlsm`) and external data files.
+- **Dynamic Filtering:** Filter data based on `StartDate` and `EndDate` named ranges.
+- **FCBL Logic:** Automatically identify "Full Combined Cycle Base Load" (FCBL) periods.
+    - **Criteria:** All three GTs must have IGV > 84 and Gen_MW > 100.
+- **Offline Water Wash (OFWW) Tracking:** Join historical OFWW logs with performance data to track recovery post-wash.
+
+### 3.2 Environmental Modeling
+- **Iterative Wet Bulb Calculation:** Calculate ambient wet bulb temperature using the ASHRAE Hyland-Wexler method (iterative convergence within 50 iterations).
+- **Inlet Humidity Modeling:** Calculate relative humidity at the compressor inlet (`RH_at_CIT`) assuming an isenthalpic process through evaporative coolers.
+
+### 3.3 Performance Correction (33-Factor Model)
+The tool must calculate and apply 33 distinct correction factors (CFs) based on GE Frame 9E performance curves.
+- **Correction Categories:**
+    1. **CIT (Compressor Inlet Temp):** CF1–5 (Exh Press, Output, HR, Exh Flow, Exh Temp).
+    2. **RH (Relative Humidity):** CF6–9.
+    3. **Shaft Speed:** CF10–13 (Corrects for deviations from 3000 RPM).
+    4. **Fuel Temp:** CF14–15.
+    5. **Inlet DP:** CF16–19 (Inlet Pressure Drop).
+    6. **Exhaust Pressure/DP:** CF20–25.
+    7. **Barometric Pressure:** CF26–29.
+    8. **Fuel Composition:** CF30–33 (LHV and H/C Ratio adjustments).
+
+### 3.4 Key Performance Indicators (KPIs)
+- **Corrected Output (MW):** Measured Output ÷ Product of Output CFs.
+- **Corrected Heat Rate (BTU/kWh):** Measured Heat Rate ÷ Product of HR CFs.
+- **Corrected Efficiency:** 3412.14 / Corrected Heat Rate.
+- **Compressor Health:**
+    - **Pressure Ratio (PR):** Discharge Press / Ambient Press.
+    - **Isentropic Efficiency:** Derived from PR and Temp Rise.
+- **Exhaust Metrics:** Estimated Exhaust Flow (kg/s) and Corrected Exhaust Temperature.
+
+### 3.5 Summary & Aggregation
+- **Unit Stacking:** Combine GT1A, GT1B, and GT1C results into a single chronological table.
+- **Total Calculation:** Provide a "TOTAL" row per hour summing MMBTU/hr, Gen MW, and Corrected Output across the unit.
+
+---
+
+## 4. Technical Architecture
+
+### 4.1 Platform & Infrastructure
+- **Engine:** Power Query (M Language) within Microsoft Excel.
+- **Workbook Dependencies (Named Ranges):**
+    - `StartDate`, `EndDate`: Control date range.
+    - `filepth`: Path to the raw history data file.
+    - `filepth_comp`: Path to fuel composition data.
+    - `OFWW`: Table containing wash dates.
+
+### 4.2 Helper Function Library
+The tool utilizes a modular library of "Connection Only" queries:
+- `fnInterp1D`: Linear 1-dimensional interpolation.
+- `fnInterp2D`: Bilinear 2-dimensional interpolation.
+- `fnInterpFuelCurve`: Specialized interpolation for H/C curves.
+- `fnRH_at_Comp_Inlet`: Thermodynamic calculation for inlet humidity.
+- `fnCF_*`: Individual modules for each correction factor group.
+
+### 4.3 Calculation Methodology
+- **Correction Factor Application:** Multiplicative for Ratios (Output/HR/Flow), Additive for Temperature Differences.
+- **Interpolation:** 1D and 2D lookups against static data grids embedded within M functions.
+
+---
+
+## 5. Data Definitions (Key Tags)
+
+| Tag Name | Description | Units |
+| :--- | :--- | :--- |
+| `Ambient_Temp_DB` | Ambient Dry Bulb Temperature | °C |
+| `GT1x_Gen_MW` | Generator Power Output | MW |
+| `GT1x_Fuel_Flow` | Gas Fuel Flow (Measured) | kg/s |
+| `GT1x_Comp_Inlet_Temp` | Air Temperature at Compressor Inlet | °C |
+| `GT1x_IGV_Position` | Inlet Guide Vane Position | Degrees |
+| `LHV_Btu_lbm` | Lower Heating Value of Fuel | BTU/lb |
+| `HHV_BTU_SCF` | Gross Calorific Value | BTU/SCF |
+
+---
+
+## 6. Potential Future Enhancements
+
+1. **Real-time Data Integration:**
+   - Connect directly to a PI System or SQL Server database to eliminate manual CSV/Excel data export.
+2. **Automated Anomaly Detection:**
+   - Implement statistical process control (SPC) to flag deviations in Corrected Heat Rate exceeding 2-sigma.
+3. **Degradation Modeling:**
+   - Calculate "Recoverable" vs. "Non-recoverable" degradation based on OFWW history.
+4. **Interactive Dashboard:**
+   - Migrate final Power Query tables to Power BI for interactive visualization of degradation trends and impact breakdowns.
+5. **Predictive Maintenance:**
+   - Optimize OFWW scheduling by calculating the economic "break-even" point where fuel savings exceed the cost of the outage.
+6. **Emissions Tracking:**
+   - Integrate CO2 and NOx estimation based on fuel flow and combustion efficiency.
