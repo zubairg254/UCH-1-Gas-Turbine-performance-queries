@@ -1,0 +1,43 @@
+// Power Query : fnInterp1D
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 1 OF 12:  fnInterp1D
+// Purpose: 1-D linear interpolation helper (mirrors VBA Interp1D)
+// SETTING: Connection Only (helper function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(xList as list, yList as list, xVal as number) as any =>
+let
+    n    = List.Count(xList) - 1,
+    xMin = xList{0},
+    xMax = xList{n},
+    
+    Result =
+        if xVal < xMin or xVal > xMax then
+            error Error.Record("OutOfRange", 
+                "Value " & Number.ToText(xVal) & 
+                " is outside table range [" & Number.ToText(xMin) & 
+                ", " & Number.ToText(xMax) & "]")
+        else
+            let
+                // Find index of last breakpoint <= xVal
+                Positions = List.PositionOfAny(xList, 
+                    List.Select(xList, each _ <= xVal), 
+                    Occurrence.All),
+                
+                // Last matching index, capped at n-1 so we always have i+1
+                i  = List.Min({List.Last(Positions), n - 1}),
+                x0 = xList{i},
+                x1 = xList{i + 1},
+                y0 = yList{i},
+                y1 = yList{i + 1},
+                
+                // Exact match at last point guard
+                CF = if x0 = x1 then y0
+                     else y0 + (y1 - y0) * (xVal - x0) / (x1 - x0)
+            in
+                CF
+in
+    Result

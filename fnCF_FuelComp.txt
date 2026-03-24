@@ -1,0 +1,53 @@
+// Power Query : fnCF_FuelComp
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 12 OF 12:  fnCF_FuelComp
+// CFs #30–33  |  Inputs: FuelLHV_kJkg, HC_ratio
+// Three H/C curves: 4.000 / 3.860 / 3.740 — bilinear across LHV and H/C
+// SETTING: Connection Only (CF function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(FuelLHV_kJkg as number, HC_ratio as number) as record =>
+let
+    hcList = {3.74, 3.86, 4.0},
+    
+    // ── CF#30 — Output Ratio ────────────────────────────────────────────────
+    r30_HC400 = fnInterpFuelCurve(FuelLHV_kJkg, 10508, 12051, 13695, 
+                                  1.02154, 1.00566, 0.99278),
+    r30_HC386 = fnInterpFuelCurve(FuelLHV_kJkg, 10967, 12552, 14234, 
+                                  1.01494, 1.0,     0.98788),
+    r30_HC374 = fnInterpFuelCurve(FuelLHV_kJkg, 11414, 13037, 14755, 
+                                  1.00907, 0.99496, 0.98351),
+    
+    // ── CF#31 — Heat Rate Ratio ─────────────────────────────────────────────
+    r31_HC400 = fnInterpFuelCurve(FuelLHV_kJkg, 10508, 12051, 13695, 
+                                  0.99304, 0.99811, 1.00236),
+    r31_HC386 = fnInterpFuelCurve(FuelLHV_kJkg, 10967, 12552, 14234, 
+                                  0.99516, 1.0,     1.00404),
+    r31_HC374 = fnInterpFuelCurve(FuelLHV_kJkg, 11414, 13037, 14755, 
+                                  0.99708, 1.0017,  1.00556),
+    
+    // ── CF#32 — Exhaust Flow Ratio ──────────────────────────────────────────
+    r32_HC400 = fnInterpFuelCurve(FuelLHV_kJkg, 10508, 12051, 13695, 
+                                  1.01425, 1.00305, 0.99405),
+    r32_HC386 = fnInterpFuelCurve(FuelLHV_kJkg, 10967, 12552, 14234, 
+                                  1.01051, 1.0,     0.99154),
+    r32_HC374 = fnInterpFuelCurve(FuelLHV_kJkg, 11414, 13037, 14755, 
+                                  1.00719, 0.99729, 0.98931),
+    
+    // ── CF#33 — Exhaust Temperature Difference (°C, additive) ───────────────
+    r33_HC400 = fnInterpFuelCurve(FuelLHV_kJkg, 10508, 12051, 13695, 
+                                  -1.98, -0.47, 0.76),
+    r33_HC386 = fnInterpFuelCurve(FuelLHV_kJkg, 10967, 12552, 14234, 
+                                  -1.42,  0.0,  1.15),
+    r33_HC374 = fnInterpFuelCurve(FuelLHV_kJkg, 11414, 13037, 14755, 
+                                  -0.93,  0.42, 1.5)
+in
+    [
+        CF30_OutputRatio          = fnInterp1D(hcList, {r30_HC374, r30_HC386, r30_HC400}, HC_ratio),
+        CF31_HeatRateRatio        = fnInterp1D(hcList, {r31_HC374, r31_HC386, r31_HC400}, HC_ratio),
+        CF32_ExhaustFlowRatio     = fnInterp1D(hcList, {r32_HC374, r32_HC386, r32_HC400}, HC_ratio),
+        CF33_ExhaustTempDiff_degC = fnInterp1D(hcList, {r33_HC374, r33_HC386, r33_HC400}, HC_ratio)
+    ]

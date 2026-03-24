@@ -1,0 +1,22 @@
+// Power Query : fnCF_FuelTemp
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 7 OF 12:  fnCF_FuelTemp
+// CFs #14–15  |  Input: FuelTemp_degC
+// SETTING: Connection Only (CF function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(FuelTemp_degC as number) as record =>
+let
+    xFT  = {-1.1, 5.8, 12.8, 19.7, 26.7, 33.6, 40.6, 47.5, 54.4},
+    yOut = {1.00034, 1.00026, 1.00017, 1.00009, 1.0, 
+            0.99991, 0.99983, 0.99974, 0.99966},
+    yHR  = {1.00261, 1.00197, 1.00131, 1.00066, 1.0, 
+            0.99934, 0.99867, 0.998,   0.99732}
+in
+    [
+        CF14_OutputRatio   = fnInterp1D(xFT, yOut, FuelTemp_degC),
+        CF15_HeatRateRatio = fnInterp1D(xFT, yHR,  FuelTemp_degC)
+    ]

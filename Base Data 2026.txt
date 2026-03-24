@@ -1,0 +1,257 @@
+// Power Query : Base Data 2026
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+let
+    // ── 1. Read date-range parameters from Named Ranges ──────────────────
+    //    StartDate and EndDate are single-cell Named Ranges in the workbook.
+    //    Excel.CurrentWorkbook() exposes them as 1-row / 1-column tables.
+    StartDate_Raw  = Excel.CurrentWorkbook(){[Name="StartDate"]}[Content]{0}[Column1],
+    EndDate_Raw    = Excel.CurrentWorkbook(){[Name="EndDate"]}[Content]{0}[Column1],
+
+    StartDate      = if StartDate_Raw is date then StartDate_Raw
+                     else Date.From(StartDate_Raw),
+    EndDate        = if EndDate_Raw   is date then EndDate_Raw
+                     else Date.From(EndDate_Raw),
+
+                     
+    FilePath_Table = Excel.CurrentWorkbook(){[Name="filepth"]}[Content],
+    FilePath = FilePath_Table{0}[File_Path],
+    Source = Excel.Workbook(File.Contents(FilePath), null, true),
+    Sheet1_Sheet = Source{[Item="Sheet1",Kind="Sheet"]}[Data],
+    #"Promoted Headers" = Table.PromoteHeaders(Sheet1_Sheet, [PromoteAllScalars=true]),
+    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"Tag Names", type datetime}, {"UCH.OPCRTS.AMB_D_B_T1.OUT#(lf)(AMBIENT TEMP (DRY BULB H)", type any}, {"UCH.OPCRTS.HUMIDITY1.OUT#(lf)(RELATIVE HUMIDITY (H2 BL)", type any}, {"UCH.OPCRTS.10000195#(lf)(AMBIENT PRESS (H2 BLDG A)", type any}, {"UCH.OPCRTS.AMB_B_W_T2.OUT#(lf)(COOLING TOWER AREA WET B)", type any}, {"UCH.OPCRTS.AMB_W_B_T1.OUT#(lf)(Wet Bulb Temp - H2 Build)", type any}, {"UCH.OPCRTS.1ACTIM.OUT#(lf)(CTG 1A COMPRESSOR INLET)", type any}, {"UCH.OPCRTS.1BCTIM.OUT#(lf)(CTG 1B COMPRESSOR INLET)", type any}, {"UCH.OPCRTS.1CCTIM.OUT#(lf)(CTG 1C COMPRESSOR INLET)", type any}, {"UCH.OPCRTS.1ATNHRPM.OUT#(lf)(CTG 1A TURBINE SPEED)", type any}, {"UCH.OPCRTS.1BTNHRPM.OUT#(lf)(CTG 1B TURBINE SPEED)", type any}, {"UCH.OPCRTS.1CTNHRPM.OUT#(lf)(CTG 1C TURBINE SPEED)", type any}, {"UCH.OPCRTS.TTTNHRPM.OUT#(lf)(STG HP TURBINE SPEED)", type any}, {"UCH.OPCRTS.FQI025ALHR.OUT#(lf)(Fuel Gas A MCF last hr)", type any}, {"UCH.OPCRTS.FQI025BLHR.OUT#(lf)(Fuel Gas B MCF last hr)", type any}, {"UCH.OPCRTS.FQI025ABTU.OUT#(lf)(Fuel Gas BTUs)", type any}, {"Uch.OPCRTS.EYJTW100.OUT#(lf)(PLANT NET LOAD)", type any}, {"UCH.OPCRTS.1ADWATT.OUT#(lf)(CTG 1A GENERATOR WATTS)", type any}, {"UCH.OPCRTS.1BDWATT.OUT#(lf)(CTG1BGENERATOR WATTS)", type any}, {"UCH.OPCRTS.1CDWATT.OUT#(lf)(CTG 1CGENERATOR WATTS)", type any}, {"UCH.OPCRTS.TTDWATT.OUT#(lf)(STG GENERATOR MEGAWATTS)", type any}, {"UCH.OPCRTS.1ADAFEX.OUT#(lf)(GTA EX2K Generator Field)", type any}, {"UCH.OPCRTS.1BDAFEX.OUT#(lf)(GTB EX2K Generator Field)", type any}, {"UCH.OPCRTS.1CDAFEX.OUT#(lf)(GTC EX2K Generator Field)", type any}, {"UCH.OPCRTS.1ADVFEX.OUT#(lf)(GTA EX2K Generator Field)", type any}, {"UCH.OPCRTS.1BDVFEX.OUT#(lf)(GTB EX2K Generator Field)", type any}, {"UCH.OPCRTS.1CDVFEX.OUT#(lf)(GTC EX2K Generator Field)", type any}, {"UCH.OPCRTS.1ADPF.OUT#(lf)(CTG 1A GENERATOR PF)", type any}, {"UCH.OPCRTS.1BDPF.OUT#(lf)(CTG1BGENERATOR POWER FAC)", type any}, {"UCH.OPCRTS.1CDPF.OUT#(lf)(CTG 1 C GENERA TOR POWER)", type any}, {"UCH.OPCRTS.TMPFT108.OUT#(lf)(STG FIRST STAGE BOWL LOW)", type any}, {"UCH.OPCRTS.1ACSGV.OUT#(lf)(CTG 1A IGV POSITION)", type any}, {"UCH.OPCRTS.1BCSGV.OUT#(lf)(CTG 1B IGV POSITION)", type any}, {"UCH.OPCRTS.1CCSGV.OUT#(lf)(CTG 1C IGV POSITION)", type any}, {"UCH.OPCRTS.1ACTD.OUT#(lf)(CTG 1A COMP DISCH TEMP)", type any}, {"UCH.OPCRTS.1BCTD.OUT#(lf)(CTG 1B COMP DISCH TEMP)", type any}, {"UCH.OPCRTS.1CCTD.OUT#(lf)(CTG 1C COMP DISCH TEMP)", type any}, {"UCH.OPCRTS.1ACPD.OUT#(lf)(CTG 1A COMP DISCH PRESS)", type any}, {"UCH.OPCRTS.1BCPD.OUT#(lf)(CTG 1B COMP DISCH PRESS)", type any}, {"UCH.OPCRTS.1CCPD.OUT#(lf)(CTG 1C COMP DISCI1 PRESS)", type any}, {"UCH.OPCRTS.1ATTXM.OUT#(lf)(CTG 1A TURB EXH AVG TEMP)", type any}, {"UCH.OPCRTS.1AFQG.OUT#(lf)(CTG 1A GAS FUEL FLOW)", type any}, {"UCH.OPCRTS.1AFTG.OUT#(lf)(GTA gas Temp)", type any}, {"UCH.OPCRTS.1BTTXM.OUT#(lf)(CTG I B TURB EXH A VG TE)", type any}, {"UCH.OPCRTS.1BFQG.OUT#(lf)(CTG 1B GAS FUEL FLOW)", type any}, {"UCH.OPCRTS.1BFTG.OUT#(lf)(GTB gas Temp)", type any}, {"UCH.OPCRTS.1CTTXM.OUT#(lf)(CTG 1C TURB EXH A VG TEM)", type any}, {"UCH.OPCRTS.1CFQG.OUT#(lf)(CTG 1C GAS FUEL FLOW)", type any}, {"UCH.OPCRTS.1CFTG.OUT#(lf)(GTC gas Temp)", type any}, {"UCH.OPCRTS.HPPT011A.OUT#(lf)(HRSG1 A HP STM HOR PRESS)", type any}, {"UCH.OPCRTS.HPPT011B.OUT#(lf)(HRSG 1B HP STM HOR PRESS)", type any}, {"UCH.OPCRTS.HPPT011C.OUT#(lf)(HRSG 1C HP STM HOR PRESS)", type any}, {"UCH.OPCRTS.IPPT021A.OUT#(lf)(HRSG IA IP STEAM HOR PRE)", type any}, {"UCH.OPCRTS.IPPT021B.OUT#(lf)(HRSG 1B IP STM HOR PRESS)", type any}, {"UCH.OPCRTS.IPPT021C.OUT#(lf)(HRSG 1C IP STM HDR PRESS)", type any}, {"UCH.OPCRTS.HPTE011A.OUT#(lf)(HRSG 1A HP STM HOR TEMP)", type any}, {"UCH.OPCRTS.HPTE011B.OUT#(lf)(HRSG 1B HP STM HOR TEMP)", type any}, {"UCH.OPCRTS.HPTE011C.OUT#(lf)(HRSG 1C HP STM HOR TEMP)", type any}, {"UCH.OPCRTS.IPTE021A.OUT#(lf)(HRSG 1A IP STM HOR TEMP)", type any}, {"UCH.OPCRTS.IPTE021B.OUT#(lf)(HRSG1BIP STM HDR TEMP)", type any}, {"UCH.OPCRTS.IPTE021C.OUT#(lf)(HRSG 1C IP STM HOR TEMP)", type any}, {"UCH.OPCRTS.HPFY011A1.OUT#(lf)(HRSG 1 A HP STM MASS FLO)", type any}, {"UCH.OPCRTS.HPFY011B1.OUT#(lf)(HRSG 1B HP STM MASS FLOW)", type any}, {"UCH.OPCRTS.HPFY011C1.OUT#(lf)(HRSG 1C HP STM MASS FLOW)", type any}, {"UCH.OPCRTS.IPFT021A.OUT#(lf)(HRSG JA IP STM HDR FLOW)", type any}, {"UCH.OPCRTS.IPFT021B.OUT#(lf)(HRSG 1 B IP STM HDR FLOW)", type any}, {"UCH.OPCRTS.IPFT021C.OUT#(lf)(HRSG 1C IP STM HDR FLOW)", type any}, {"UCH.OPCRTS.TTIS1.OUT#(lf)(STG MAIN INLET STEAM LIN)", type any}, {"UCH.OPCRTS.TTIP1.OUT#(lf)(STG HP STEAM INLET PRESS)", type any}, {"UCH.OPCRTS.TTLPAS1.OUT#(lf)(STG LP ADM STEAM TEMP 1)", type any}, {"UCH.OPCRTS.TTACVEFF.OUT#(lf)(STG IP STEAM ADMISSION P)", type any}, {"UCH.OPCRTS.TTEXH1.OUT#(lf)(STG EXHAUST STEAM TEMP 1)", type any}, {"UCH.OPCRTS.TTEVP1.OUT#(lf)(STG EXHAUST VACUUM)", type any}, {"UCH.OPCRTS.CDPT001A.OUT#(lf)(SURFACE CONDENSER BACK P)", type any}, {"Uch.OPCRTS.BFFT011A.OUT#(lf)(HRSGIA HP DRUM FDWTR SUP)", type any}, {"Uch.OPCRTS.BFFT011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT011C.OUT#(lf)(HRSG1C HP DRUM FDWTR SUP)", type any}, {"Uch.OPCRTS.BFFY011A.OUT#(lf)(HRSG 1A HP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY011C.OUT#(lf)(HRSG 1C HP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT021A.OUT#(lf)(HRSG 1A IP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT021C.OUT#(lf)(HRSG I C IP DRUM FDWTR S)", type any}, {"Uch.OPCRTS.BFFY021A.OUT#(lf)(HRSG 1A IP DRUM FD WTR S)", type any}, {"Uch.OPCRTS.BFFY021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY021C.OUT#(lf)(HRSG 1C IP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFT031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFFY031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFTE011A.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", type any}, {"Uch.OPCRTS.BFTE011B.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", type any}, {"Uch.OPCRTS.BFTE011C.OUT#(lf)(HRSG IC HP DRM FDWTR SUP)", type any}, {"Uch.OPCRTS.BFTE021A.OUT#(lf)(HRSG IA IP DRUM FDWTR SU)", type any}, {"Uch.OPCRTS.BFTE021B.OUT#(lf)(HRSG IB IP DRM FDWTR SUP)", type any}, {"Uch.OPCRTS.BFTE021C.OUT#(lf)(HRSG 1C IP DRM FDWTR SUP)", type any}, {"Uch.OPCRTS.BFPT011.OUT#(lf)(BFP DISCHARGE HEADER PRE)", type any}, {"Uch.OPCRTS.BFPT021.OUT#(lf)(BFP DISCH IP HDR PRESS)", type any}, {"Uch.OPCRTS.LPPT031A.OUT#(lf)(HRSG1BLP STM HDR PRESS)", type any}, {"Uch.OPCRTS.LPPT031B.OUT#(lf)(HRSG 1C LP STM HDR PRESS)", type any}, {"Uch.OPCRTS.LPPT031C.OUT#(lf)(LP STEAM DUMP VALVE - O/)", type any}, {"Uch.OPCRTS.LPTE031A.OUT#(lf)(HRSG 1B LP STM HDR TEMP)", type any}, {"Uch.OPCRTS.LPTE031B.OUT#(lf)(HRSG 1 C LP STM HDR TEMP)", type any}, {"Uch.OPCRTS.LPTE031C.OUT#(lf)(STG GEN VOLTAGE (PHASE A)", type any}, {"Uch.OPCRTS.HPPT002A.OUT#(lf)(HRSG 1A HP ORM PRESS - M)", type any}, {"Uch.OPCRTS.HPPT002B.OUT#(lf)(HRSG 1B HP ORM PRESS - M)", type any}, {"Uch.OPCRTS.HPPT002C.OUT#(lf)(No Description)", type any}, {"Uch.OPCRTS.IPPT002A2.OUT#(lf)(HRSG 1A IP DRUM STM PRES)", type any}, {"Uch.OPCRTS.IPPT002B.OUT#(lf)(HRSG 1B IP DRM STMPRESS)", type any}, {"Uch.OPCRTS.IPPT002C2.OUT#(lf)(HRSG 1C IP DRM PRESS)", type any}, {"Uch.OPCRTS.LPPT002A.OUT#(lf)(HRSG 1A LP DRM STM PRESS)", type any}, {"Uch.OPCRTS.LPPT002B2.OUT#(lf)(HRSG 1B IP DRM STM PRESS)", type any}, {"Uch.OPCRTS.LPPT002C.OUT#(lf)(HRSG 1C LP STM DRM PRESS)", type any}, {"UCH.OPCRTS.EGTE011A1.OUT#(lf)(HRSG 1A STACK INLET TEMP)", type any}, {"UCH.OPCRTS.EGTE011B1.OUT#(lf)(HRSG 1B STACK INLET TEMP)", type any}, {"UCH.OPCRTS.EGTE011C1.OUT#(lf)(HRSG 1 C STACK INLET TEM)", type any}, {"UCH.OPCRTS.CWPT004.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", type any}, {"UCH.OPCRTS.CWFT016.OUT#(lf)(CIRC WTR PMPS DISCH HEAD)", type any}, {"UCH.OPCRTS.CWTE003.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", type any}, {"UCH.OPCRTS.CWTE049A.OUT#(lf)(CONDENSER WATER BOX A OU)", type any}, {"UCH.OPCRTS.CWTE049B.OUT#(lf)(CONDENSER WATER BOX B OU)", type any}, {"UCH.OPCRTS.CWTE061.OUT#(lf)(CIRC WTR HEAT XCHANGER 3)", type any}, {"UCH.OPCRTS.CWFT028.OUT#(lf)(COOLING TOWER BLOWDOWN F)", type any}, {"GT-A DP", type any}, {"GT-B DP", type any}, {"GT-C DP", type any}, {"GT-A GCV Position", type any}, {"GT-B GCV Position", type any}, {"GT-C GCV Position", type any}, {"GT-A GCV Refrence", type any}, {"GT-B GCV Refrence", type any}, {"GT-C GCV Refrence", type any}, {"GT-A InterStage Gas Pressure", type any}, {"GT-B InterStage Gas Pressure", type any}, {"GT-C InterStage Gas Pressure", type any}}),
+    #"Removed Top Rows" = Table.Skip(#"Changed Type",2),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Removed Top Rows",{{"Tag Names", type datetime}, {"UCH.OPCRTS.AMB_D_B_T1.OUT#(lf)(AMBIENT TEMP (DRY BULB H)", type number}, {"UCH.OPCRTS.HUMIDITY1.OUT#(lf)(RELATIVE HUMIDITY (H2 BL)", type number}, {"UCH.OPCRTS.10000195#(lf)(AMBIENT PRESS (H2 BLDG A)", type number}, {"UCH.OPCRTS.AMB_B_W_T2.OUT#(lf)(COOLING TOWER AREA WET B)", Int64.Type}, {"UCH.OPCRTS.AMB_W_B_T1.OUT#(lf)(Wet Bulb Temp - H2 Build)", type number}, {"UCH.OPCRTS.1ACTIM.OUT#(lf)(CTG 1A COMPRESSOR INLET)", type number}, {"UCH.OPCRTS.1BCTIM.OUT#(lf)(CTG 1B COMPRESSOR INLET)", type number}, {"UCH.OPCRTS.1CCTIM.OUT#(lf)(CTG 1C COMPRESSOR INLET)", type number}, {"UCH.OPCRTS.1ATNHRPM.OUT#(lf)(CTG 1A TURBINE SPEED)", type number}, {"UCH.OPCRTS.1BTNHRPM.OUT#(lf)(CTG 1B TURBINE SPEED)", type number}, {"UCH.OPCRTS.1CTNHRPM.OUT#(lf)(CTG 1C TURBINE SPEED)", type number}, {"UCH.OPCRTS.TTTNHRPM.OUT#(lf)(STG HP TURBINE SPEED)", type number}, {"UCH.OPCRTS.FQI025ALHR.OUT#(lf)(Fuel Gas A MCF last hr)", Int64.Type}, {"UCH.OPCRTS.FQI025BLHR.OUT#(lf)(Fuel Gas B MCF last hr)", type number}, {"UCH.OPCRTS.FQI025ABTU.OUT#(lf)(Fuel Gas BTUs)", Int64.Type}, {"Uch.OPCRTS.EYJTW100.OUT#(lf)(PLANT NET LOAD)", type number}, {"UCH.OPCRTS.1ADWATT.OUT#(lf)(CTG 1A GENERATOR WATTS)", type number}, {"UCH.OPCRTS.1BDWATT.OUT#(lf)(CTG1BGENERATOR WATTS)", type number}, {"UCH.OPCRTS.1CDWATT.OUT#(lf)(CTG 1CGENERATOR WATTS)", type number}, {"UCH.OPCRTS.TTDWATT.OUT#(lf)(STG GENERATOR MEGAWATTS)", type number}, {"UCH.OPCRTS.1ADAFEX.OUT#(lf)(GTA EX2K Generator Field)", type number}, {"UCH.OPCRTS.1BDAFEX.OUT#(lf)(GTB EX2K Generator Field)", type number}, {"UCH.OPCRTS.1CDAFEX.OUT#(lf)(GTC EX2K Generator Field)", type number}, {"UCH.OPCRTS.1ADVFEX.OUT#(lf)(GTA EX2K Generator Field)", type number}, {"UCH.OPCRTS.1BDVFEX.OUT#(lf)(GTB EX2K Generator Field)", type number}, {"UCH.OPCRTS.1CDVFEX.OUT#(lf)(GTC EX2K Generator Field)", type number}, {"UCH.OPCRTS.1ADPF.OUT#(lf)(CTG 1A GENERATOR PF)", type number}, {"UCH.OPCRTS.1BDPF.OUT#(lf)(CTG1BGENERATOR POWER FAC)", type number}, {"UCH.OPCRTS.1CDPF.OUT#(lf)(CTG 1 C GENERA TOR POWER)", type number}, {"UCH.OPCRTS.TMPFT108.OUT#(lf)(STG FIRST STAGE BOWL LOW)", type number}, {"UCH.OPCRTS.1ACSGV.OUT#(lf)(CTG 1A IGV POSITION)", type number}, {"UCH.OPCRTS.1BCSGV.OUT#(lf)(CTG 1B IGV POSITION)", type number}, {"UCH.OPCRTS.1CCSGV.OUT#(lf)(CTG 1C IGV POSITION)", type number}, {"UCH.OPCRTS.1ACTD.OUT#(lf)(CTG 1A COMP DISCH TEMP)", type number}, {"UCH.OPCRTS.1BCTD.OUT#(lf)(CTG 1B COMP DISCH TEMP)", type number}, {"UCH.OPCRTS.1CCTD.OUT#(lf)(CTG 1C COMP DISCH TEMP)", type number}, {"UCH.OPCRTS.1ACPD.OUT#(lf)(CTG 1A COMP DISCH PRESS)", type number}, {"UCH.OPCRTS.1BCPD.OUT#(lf)(CTG 1B COMP DISCH PRESS)", type number}, {"UCH.OPCRTS.1CCPD.OUT#(lf)(CTG 1C COMP DISCI1 PRESS)", type number}, {"UCH.OPCRTS.1ATTXM.OUT#(lf)(CTG 1A TURB EXH AVG TEMP)", type number}, {"UCH.OPCRTS.1AFQG.OUT#(lf)(CTG 1A GAS FUEL FLOW)", type number}, {"UCH.OPCRTS.1AFTG.OUT#(lf)(GTA gas Temp)", type number}, {"UCH.OPCRTS.1BTTXM.OUT#(lf)(CTG I B TURB EXH A VG TE)", type number}, {"UCH.OPCRTS.1BFQG.OUT#(lf)(CTG 1B GAS FUEL FLOW)", type number}, {"UCH.OPCRTS.1BFTG.OUT#(lf)(GTB gas Temp)", type number}, {"UCH.OPCRTS.1CTTXM.OUT#(lf)(CTG 1C TURB EXH A VG TEM)", type number}, {"UCH.OPCRTS.1CFQG.OUT#(lf)(CTG 1C GAS FUEL FLOW)", type number}, {"UCH.OPCRTS.1CFTG.OUT#(lf)(GTC gas Temp)", type number}, {"UCH.OPCRTS.HPPT011A.OUT#(lf)(HRSG1 A HP STM HOR PRESS)", type number}, {"UCH.OPCRTS.HPPT011B.OUT#(lf)(HRSG 1B HP STM HOR PRESS)", type number}, {"UCH.OPCRTS.HPPT011C.OUT#(lf)(HRSG 1C HP STM HOR PRESS)", type number}, {"UCH.OPCRTS.IPPT021A.OUT#(lf)(HRSG IA IP STEAM HOR PRE)", type number}, {"UCH.OPCRTS.IPPT021B.OUT#(lf)(HRSG 1B IP STM HOR PRESS)", type number}, {"UCH.OPCRTS.IPPT021C.OUT#(lf)(HRSG 1C IP STM HDR PRESS)", type number}, {"UCH.OPCRTS.HPTE011A.OUT#(lf)(HRSG 1A HP STM HOR TEMP)", type number}, {"UCH.OPCRTS.HPTE011B.OUT#(lf)(HRSG 1B HP STM HOR TEMP)", type number}, {"UCH.OPCRTS.HPTE011C.OUT#(lf)(HRSG 1C HP STM HOR TEMP)", type number}, {"UCH.OPCRTS.IPTE021A.OUT#(lf)(HRSG 1A IP STM HOR TEMP)", type number}, {"UCH.OPCRTS.IPTE021B.OUT#(lf)(HRSG1BIP STM HDR TEMP)", type number}, {"UCH.OPCRTS.IPTE021C.OUT#(lf)(HRSG 1C IP STM HOR TEMP)", type number}, {"UCH.OPCRTS.HPFY011A1.OUT#(lf)(HRSG 1 A HP STM MASS FLO)", type number}, {"UCH.OPCRTS.HPFY011B1.OUT#(lf)(HRSG 1B HP STM MASS FLOW)", type number}, {"UCH.OPCRTS.HPFY011C1.OUT#(lf)(HRSG 1C HP STM MASS FLOW)", type number}, {"UCH.OPCRTS.IPFT021A.OUT#(lf)(HRSG JA IP STM HDR FLOW)", type number}, {"UCH.OPCRTS.IPFT021B.OUT#(lf)(HRSG 1 B IP STM HDR FLOW)", type number}, {"UCH.OPCRTS.IPFT021C.OUT#(lf)(HRSG 1C IP STM HDR FLOW)", type number}, {"UCH.OPCRTS.TTIS1.OUT#(lf)(STG MAIN INLET STEAM LIN)", type number}, {"UCH.OPCRTS.TTIP1.OUT#(lf)(STG HP STEAM INLET PRESS)", type number}, {"UCH.OPCRTS.TTLPAS1.OUT#(lf)(STG LP ADM STEAM TEMP 1)", type number}, {"UCH.OPCRTS.TTACVEFF.OUT#(lf)(STG IP STEAM ADMISSION P)", type number}, {"UCH.OPCRTS.TTEXH1.OUT#(lf)(STG EXHAUST STEAM TEMP 1)", type number}, {"UCH.OPCRTS.TTEVP1.OUT#(lf)(STG EXHAUST VACUUM)", type number}, {"UCH.OPCRTS.CDPT001A.OUT#(lf)(SURFACE CONDENSER BACK P)", type number}, {"Uch.OPCRTS.BFFT011A.OUT#(lf)(HRSGIA HP DRUM FDWTR SUP)", type number}, {"Uch.OPCRTS.BFFT011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT011C.OUT#(lf)(HRSG1C HP DRUM FDWTR SUP)", type number}, {"Uch.OPCRTS.BFFY011A.OUT#(lf)(HRSG 1A HP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY011C.OUT#(lf)(HRSG 1C HP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT021A.OUT#(lf)(HRSG 1A IP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT021C.OUT#(lf)(HRSG I C IP DRUM FDWTR S)", type number}, {"Uch.OPCRTS.BFFY021A.OUT#(lf)(HRSG 1A IP DRUM FD WTR S)", type number}, {"Uch.OPCRTS.BFFY021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY021C.OUT#(lf)(HRSG 1C IP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFT031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFFY031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFTE011A.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", type number}, {"Uch.OPCRTS.BFTE011B.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", type number}, {"Uch.OPCRTS.BFTE011C.OUT#(lf)(HRSG IC HP DRM FDWTR SUP)", type number}, {"Uch.OPCRTS.BFTE021A.OUT#(lf)(HRSG IA IP DRUM FDWTR SU)", type number}, {"Uch.OPCRTS.BFTE021B.OUT#(lf)(HRSG IB IP DRM FDWTR SUP)", type number}, {"Uch.OPCRTS.BFTE021C.OUT#(lf)(HRSG 1C IP DRM FDWTR SUP)", type number}, {"Uch.OPCRTS.BFPT011.OUT#(lf)(BFP DISCHARGE HEADER PRE)", type number}, {"Uch.OPCRTS.BFPT021.OUT#(lf)(BFP DISCH IP HDR PRESS)", type number}, {"Uch.OPCRTS.LPPT031A.OUT#(lf)(HRSG1BLP STM HDR PRESS)", type number}, {"Uch.OPCRTS.LPPT031B.OUT#(lf)(HRSG 1C LP STM HDR PRESS)", type number}, {"Uch.OPCRTS.LPPT031C.OUT#(lf)(LP STEAM DUMP VALVE - O/)", type number}, {"Uch.OPCRTS.LPTE031A.OUT#(lf)(HRSG 1B LP STM HDR TEMP)", type number}, {"Uch.OPCRTS.LPTE031B.OUT#(lf)(HRSG 1 C LP STM HDR TEMP)", type number}, {"Uch.OPCRTS.LPTE031C.OUT#(lf)(STG GEN VOLTAGE (PHASE A)", type number}, {"Uch.OPCRTS.HPPT002A.OUT#(lf)(HRSG 1A HP ORM PRESS - M)", type number}, {"Uch.OPCRTS.HPPT002B.OUT#(lf)(HRSG 1B HP ORM PRESS - M)", type number}, {"Uch.OPCRTS.HPPT002C.OUT#(lf)(No Description)", type number}, {"Uch.OPCRTS.IPPT002A2.OUT#(lf)(HRSG 1A IP DRUM STM PRES)", type number}, {"Uch.OPCRTS.IPPT002B.OUT#(lf)(HRSG 1B IP DRM STMPRESS)", type number}, {"Uch.OPCRTS.IPPT002C2.OUT#(lf)(HRSG 1C IP DRM PRESS)", type number}, {"Uch.OPCRTS.LPPT002A.OUT#(lf)(HRSG 1A LP DRM STM PRESS)", type number}, {"Uch.OPCRTS.LPPT002B2.OUT#(lf)(HRSG 1B IP DRM STM PRESS)", type number}, {"Uch.OPCRTS.LPPT002C.OUT#(lf)(HRSG 1C LP STM DRM PRESS)", type number}, {"UCH.OPCRTS.EGTE011A1.OUT#(lf)(HRSG 1A STACK INLET TEMP)", type number}, {"UCH.OPCRTS.EGTE011B1.OUT#(lf)(HRSG 1B STACK INLET TEMP)", type number}, {"UCH.OPCRTS.EGTE011C1.OUT#(lf)(HRSG 1 C STACK INLET TEM)", type number}, {"UCH.OPCRTS.CWPT004.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", type number}, {"UCH.OPCRTS.CWFT016.OUT#(lf)(CIRC WTR PMPS DISCH HEAD)", type number}, {"UCH.OPCRTS.CWTE003.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", type number}, {"UCH.OPCRTS.CWTE049A.OUT#(lf)(CONDENSER WATER BOX A OU)", type number}, {"UCH.OPCRTS.CWTE049B.OUT#(lf)(CONDENSER WATER BOX B OU)", type number}, {"UCH.OPCRTS.CWTE061.OUT#(lf)(CIRC WTR HEAT XCHANGER 3)", type number}, {"UCH.OPCRTS.CWFT028.OUT#(lf)(COOLING TOWER BLOWDOWN F)", type number}, {"GT-A DP", type number}, {"GT-B DP", type number}, {"GT-C DP", type number}, {"GT-A GCV Position", type number}, {"GT-B GCV Position", type number}, {"GT-C GCV Position", type number}, {"GT-A GCV Refrence", type number}, {"GT-B GCV Refrence", type number}, {"GT-C GCV Refrence", type number}, {"GT-A InterStage Gas Pressure", type number}, {"GT-B InterStage Gas Pressure", type number}, {"GT-C InterStage Gas Pressure", type number}}),
+    #"Renamed Columns" = Table.RenameColumns(#"Changed Type1",{{"Tag Names", "Time Stamp"}}),
+    #"Inserted Date" = Table.AddColumn(#"Renamed Columns", "Date", each DateTime.Date([Time Stamp]), type date),
+    #"Inserted Hour" = Table.AddColumn(#"Inserted Date", "Hour", each Time.Hour([Time Stamp]), Int64.Type),
+    #"Replaced Value" = Table.ReplaceValue(#"Inserted Hour",0,24,Replacer.ReplaceValue,{"Hour"}),
+    #"Added Custom" = Table.AddColumn(#"Replaced Value", "Date Only", each if [Hour] = 24 then Date.AddDays([Date], -1) else [Date]),
+    #"Reordered Columns" = Table.ReorderColumns(#"Added Custom",{"Date","Date Only","Hour","Time Stamp", "UCH.OPCRTS.AMB_D_B_T1.OUT#(lf)(AMBIENT TEMP (DRY BULB H)", "UCH.OPCRTS.HUMIDITY1.OUT#(lf)(RELATIVE HUMIDITY (H2 BL)", "UCH.OPCRTS.10000195#(lf)(AMBIENT PRESS (H2 BLDG A)", "UCH.OPCRTS.AMB_B_W_T2.OUT#(lf)(COOLING TOWER AREA WET B)", "UCH.OPCRTS.AMB_W_B_T1.OUT#(lf)(Wet Bulb Temp - H2 Build)", "UCH.OPCRTS.1ACTIM.OUT#(lf)(CTG 1A COMPRESSOR INLET)", "UCH.OPCRTS.1BCTIM.OUT#(lf)(CTG 1B COMPRESSOR INLET)", "UCH.OPCRTS.1CCTIM.OUT#(lf)(CTG 1C COMPRESSOR INLET)", "UCH.OPCRTS.1ATNHRPM.OUT#(lf)(CTG 1A TURBINE SPEED)", "UCH.OPCRTS.1BTNHRPM.OUT#(lf)(CTG 1B TURBINE SPEED)", "UCH.OPCRTS.1CTNHRPM.OUT#(lf)(CTG 1C TURBINE SPEED)", "UCH.OPCRTS.TTTNHRPM.OUT#(lf)(STG HP TURBINE SPEED)", "UCH.OPCRTS.FQI025ALHR.OUT#(lf)(Fuel Gas A MCF last hr)", "UCH.OPCRTS.FQI025BLHR.OUT#(lf)(Fuel Gas B MCF last hr)", "UCH.OPCRTS.FQI025ABTU.OUT#(lf)(Fuel Gas BTUs)", "Uch.OPCRTS.EYJTW100.OUT#(lf)(PLANT NET LOAD)", "UCH.OPCRTS.1ADWATT.OUT#(lf)(CTG 1A GENERATOR WATTS)", "UCH.OPCRTS.1BDWATT.OUT#(lf)(CTG1BGENERATOR WATTS)", "UCH.OPCRTS.1CDWATT.OUT#(lf)(CTG 1CGENERATOR WATTS)", "UCH.OPCRTS.TTDWATT.OUT#(lf)(STG GENERATOR MEGAWATTS)", "UCH.OPCRTS.1ADAFEX.OUT#(lf)(GTA EX2K Generator Field)", "UCH.OPCRTS.1BDAFEX.OUT#(lf)(GTB EX2K Generator Field)", "UCH.OPCRTS.1CDAFEX.OUT#(lf)(GTC EX2K Generator Field)", "UCH.OPCRTS.1ADVFEX.OUT#(lf)(GTA EX2K Generator Field)", "UCH.OPCRTS.1BDVFEX.OUT#(lf)(GTB EX2K Generator Field)", "UCH.OPCRTS.1CDVFEX.OUT#(lf)(GTC EX2K Generator Field)", "UCH.OPCRTS.1ADPF.OUT#(lf)(CTG 1A GENERATOR PF)", "UCH.OPCRTS.1BDPF.OUT#(lf)(CTG1BGENERATOR POWER FAC)", "UCH.OPCRTS.1CDPF.OUT#(lf)(CTG 1 C GENERA TOR POWER)", "UCH.OPCRTS.TMPFT108.OUT#(lf)(STG FIRST STAGE BOWL LOW)", "UCH.OPCRTS.1ACSGV.OUT#(lf)(CTG 1A IGV POSITION)", "UCH.OPCRTS.1BCSGV.OUT#(lf)(CTG 1B IGV POSITION)", "UCH.OPCRTS.1CCSGV.OUT#(lf)(CTG 1C IGV POSITION)", "UCH.OPCRTS.1ACTD.OUT#(lf)(CTG 1A COMP DISCH TEMP)", "UCH.OPCRTS.1BCTD.OUT#(lf)(CTG 1B COMP DISCH TEMP)", "UCH.OPCRTS.1CCTD.OUT#(lf)(CTG 1C COMP DISCH TEMP)", "UCH.OPCRTS.1ACPD.OUT#(lf)(CTG 1A COMP DISCH PRESS)", "UCH.OPCRTS.1BCPD.OUT#(lf)(CTG 1B COMP DISCH PRESS)", "UCH.OPCRTS.1CCPD.OUT#(lf)(CTG 1C COMP DISCI1 PRESS)", "UCH.OPCRTS.1ATTXM.OUT#(lf)(CTG 1A TURB EXH AVG TEMP)", "UCH.OPCRTS.1AFQG.OUT#(lf)(CTG 1A GAS FUEL FLOW)", "UCH.OPCRTS.1AFTG.OUT#(lf)(GTA gas Temp)", "UCH.OPCRTS.1BTTXM.OUT#(lf)(CTG I B TURB EXH A VG TE)", "UCH.OPCRTS.1BFQG.OUT#(lf)(CTG 1B GAS FUEL FLOW)", "UCH.OPCRTS.1BFTG.OUT#(lf)(GTB gas Temp)", "UCH.OPCRTS.1CTTXM.OUT#(lf)(CTG 1C TURB EXH A VG TEM)", "UCH.OPCRTS.1CFQG.OUT#(lf)(CTG 1C GAS FUEL FLOW)", "UCH.OPCRTS.1CFTG.OUT#(lf)(GTC gas Temp)", "UCH.OPCRTS.HPPT011A.OUT#(lf)(HRSG1 A HP STM HOR PRESS)", "UCH.OPCRTS.HPPT011B.OUT#(lf)(HRSG 1B HP STM HOR PRESS)", "UCH.OPCRTS.HPPT011C.OUT#(lf)(HRSG 1C HP STM HOR PRESS)", "UCH.OPCRTS.IPPT021A.OUT#(lf)(HRSG IA IP STEAM HOR PRE)", "UCH.OPCRTS.IPPT021B.OUT#(lf)(HRSG 1B IP STM HOR PRESS)", "UCH.OPCRTS.IPPT021C.OUT#(lf)(HRSG 1C IP STM HDR PRESS)", "UCH.OPCRTS.HPTE011A.OUT#(lf)(HRSG 1A HP STM HOR TEMP)", "UCH.OPCRTS.HPTE011B.OUT#(lf)(HRSG 1B HP STM HOR TEMP)", "UCH.OPCRTS.HPTE011C.OUT#(lf)(HRSG 1C HP STM HOR TEMP)", "UCH.OPCRTS.IPTE021A.OUT#(lf)(HRSG 1A IP STM HOR TEMP)", "UCH.OPCRTS.IPTE021B.OUT#(lf)(HRSG1BIP STM HDR TEMP)", "UCH.OPCRTS.IPTE021C.OUT#(lf)(HRSG 1C IP STM HOR TEMP)", "UCH.OPCRTS.HPFY011A1.OUT#(lf)(HRSG 1 A HP STM MASS FLO)", "UCH.OPCRTS.HPFY011B1.OUT#(lf)(HRSG 1B HP STM MASS FLOW)", "UCH.OPCRTS.HPFY011C1.OUT#(lf)(HRSG 1C HP STM MASS FLOW)", "UCH.OPCRTS.IPFT021A.OUT#(lf)(HRSG JA IP STM HDR FLOW)", "UCH.OPCRTS.IPFT021B.OUT#(lf)(HRSG 1 B IP STM HDR FLOW)", "UCH.OPCRTS.IPFT021C.OUT#(lf)(HRSG 1C IP STM HDR FLOW)", "UCH.OPCRTS.TTIS1.OUT#(lf)(STG MAIN INLET STEAM LIN)", "UCH.OPCRTS.TTIP1.OUT#(lf)(STG HP STEAM INLET PRESS)", "UCH.OPCRTS.TTLPAS1.OUT#(lf)(STG LP ADM STEAM TEMP 1)", "UCH.OPCRTS.TTACVEFF.OUT#(lf)(STG IP STEAM ADMISSION P)", "UCH.OPCRTS.TTEXH1.OUT#(lf)(STG EXHAUST STEAM TEMP 1)", "UCH.OPCRTS.TTEVP1.OUT#(lf)(STG EXHAUST VACUUM)", "UCH.OPCRTS.CDPT001A.OUT#(lf)(SURFACE CONDENSER BACK P)", "Uch.OPCRTS.BFFT011A.OUT#(lf)(HRSGIA HP DRUM FDWTR SUP)", "Uch.OPCRTS.BFFT011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT011C.OUT#(lf)(HRSG1C HP DRUM FDWTR SUP)", "Uch.OPCRTS.BFFY011A.OUT#(lf)(HRSG 1A HP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY011C.OUT#(lf)(HRSG 1C HP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT021A.OUT#(lf)(HRSG 1A IP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT021C.OUT#(lf)(HRSG I C IP DRUM FDWTR S)", "Uch.OPCRTS.BFFY021A.OUT#(lf)(HRSG 1A IP DRUM FD WTR S)", "Uch.OPCRTS.BFFY021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY021C.OUT#(lf)(HRSG 1C IP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", "Uch.OPCRTS.BFFT031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", "Uch.OPCRTS.BFFY031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", "Uch.OPCRTS.BFTE011A.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", "Uch.OPCRTS.BFTE011B.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", "Uch.OPCRTS.BFTE011C.OUT#(lf)(HRSG IC HP DRM FDWTR SUP)", "Uch.OPCRTS.BFTE021A.OUT#(lf)(HRSG IA IP DRUM FDWTR SU)", "Uch.OPCRTS.BFTE021B.OUT#(lf)(HRSG IB IP DRM FDWTR SUP)", "Uch.OPCRTS.BFTE021C.OUT#(lf)(HRSG 1C IP DRM FDWTR SUP)", "Uch.OPCRTS.BFPT011.OUT#(lf)(BFP DISCHARGE HEADER PRE)", "Uch.OPCRTS.BFPT021.OUT#(lf)(BFP DISCH IP HDR PRESS)", "Uch.OPCRTS.LPPT031A.OUT#(lf)(HRSG1BLP STM HDR PRESS)", "Uch.OPCRTS.LPPT031B.OUT#(lf)(HRSG 1C LP STM HDR PRESS)", "Uch.OPCRTS.LPPT031C.OUT#(lf)(LP STEAM DUMP VALVE - O/)", "Uch.OPCRTS.LPTE031A.OUT#(lf)(HRSG 1B LP STM HDR TEMP)", "Uch.OPCRTS.LPTE031B.OUT#(lf)(HRSG 1 C LP STM HDR TEMP)", "Uch.OPCRTS.LPTE031C.OUT#(lf)(STG GEN VOLTAGE (PHASE A)", "Uch.OPCRTS.HPPT002A.OUT#(lf)(HRSG 1A HP ORM PRESS - M)", "Uch.OPCRTS.HPPT002B.OUT#(lf)(HRSG 1B HP ORM PRESS - M)", "Uch.OPCRTS.HPPT002C.OUT#(lf)(No Description)", "Uch.OPCRTS.IPPT002A2.OUT#(lf)(HRSG 1A IP DRUM STM PRES)", "Uch.OPCRTS.IPPT002B.OUT#(lf)(HRSG 1B IP DRM STMPRESS)", "Uch.OPCRTS.IPPT002C2.OUT#(lf)(HRSG 1C IP DRM PRESS)", "Uch.OPCRTS.LPPT002A.OUT#(lf)(HRSG 1A LP DRM STM PRESS)", "Uch.OPCRTS.LPPT002B2.OUT#(lf)(HRSG 1B IP DRM STM PRESS)", "Uch.OPCRTS.LPPT002C.OUT#(lf)(HRSG 1C LP STM DRM PRESS)", "UCH.OPCRTS.EGTE011A1.OUT#(lf)(HRSG 1A STACK INLET TEMP)", "UCH.OPCRTS.EGTE011B1.OUT#(lf)(HRSG 1B STACK INLET TEMP)", "UCH.OPCRTS.EGTE011C1.OUT#(lf)(HRSG 1 C STACK INLET TEM)", "UCH.OPCRTS.CWPT004.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", "UCH.OPCRTS.CWFT016.OUT#(lf)(CIRC WTR PMPS DISCH HEAD)", "UCH.OPCRTS.CWTE003.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", "UCH.OPCRTS.CWTE049A.OUT#(lf)(CONDENSER WATER BOX A OU)", "UCH.OPCRTS.CWTE049B.OUT#(lf)(CONDENSER WATER BOX B OU)", "UCH.OPCRTS.CWTE061.OUT#(lf)(CIRC WTR HEAT XCHANGER 3)", "UCH.OPCRTS.CWFT028.OUT#(lf)(COOLING TOWER BLOWDOWN F)", "GT-A DP", "GT-B DP", "GT-C DP", "GT-A GCV Position", "GT-B GCV Position", "GT-C GCV Position", "GT-A GCV Refrence", "GT-B GCV Refrence", "GT-C GCV Refrence", "GT-A InterStage Gas Pressure", "GT-B InterStage Gas Pressure", "GT-C InterStage Gas Pressure"}),
+    #"Removed Columns" = Table.RemoveColumns(#"Reordered Columns",{"Date"}),
+    #"Filtered Rows" = Table.SelectRows(#"Removed Columns", each [Date Only] >= Date.From(StartDate) and [Date Only] <= Date.From(EndDate)
+),
+    #"Changed Type2" = Table.TransformColumnTypes(#"Filtered Rows",{{"Date Only", type date}}),
+
+    // =========================
+    // FCBL Classification & Filter
+    // =========================
+    // Change 5: FCBL requires ALL three GTs to have IGV > 84 AND Gen_MW > 100
+    #"Added Load Type" = Table.AddColumn(
+        #"Changed Type2",
+        "Load_Type",
+        each if
+            [#"UCH.OPCRTS.1ACSGV.OUT#(lf)(CTG 1A IGV POSITION)"] > 84 and
+            [#"UCH.OPCRTS.1ADWATT.OUT#(lf)(CTG 1A GENERATOR WATTS)"] > 100 and
+            [#"UCH.OPCRTS.1BCSGV.OUT#(lf)(CTG 1B IGV POSITION)"] > 84 and
+            [#"UCH.OPCRTS.1BDWATT.OUT#(lf)(CTG1BGENERATOR WATTS)"] > 100 and
+            [#"UCH.OPCRTS.1CCSGV.OUT#(lf)(CTG 1C IGV POSITION)"] > 84 and
+            [#"UCH.OPCRTS.1CDWATT.OUT#(lf)(CTG 1CGENERATOR WATTS)"] > 100
+        then "FCBL"
+        else "Non-FCBL",
+        type text
+    ),
+    #"Filtered FCBL Only" = Table.SelectRows(#"Added Load Type", each [Load_Type] = "FCBL"),
+
+
+
+    // =========================
+    // OFWW (Offline Water Wash) Join
+    // =========================
+    // Reference the existing OFWW Power Query directly.
+    // That query already has columns: Date (date), GT-A (text), GT-B (text), GT-C (text)
+    // OFWW final column names: "Date", "GT-A " (trailing space), "GT-B", "GT-C"
+    OFWW_Slim = Table.SelectColumns(#"OFWW", {"Date", "GT-A ", "GT-B", "GT-C"}),
+
+    // Left-join FCBL base data with OFWW on [Date Only] = [Date]
+    OFWW_Joined = Table.NestedJoin(
+        #"Filtered FCBL Only",
+        {"Date Only"},
+        OFWW_Slim,
+        {"Date"},
+        "_ofww",
+        JoinKind.LeftOuter
+    ),
+
+    // Expand GT-A, GT-B, GT-C into temporary columns
+    OFWW_Expanded = Table.ExpandTableColumn(
+        OFWW_Joined,
+        "_ofww",
+        {"GT-A ", "GT-B", "GT-C"},
+        {"_ofww_GTA", "_ofww_GTB", "_ofww_GTC"}
+    ),
+
+    // GT1A_OFWW: returns the actual cell value from GT-A column, or null if empty
+    Add_GT1A_OFWW = Table.AddColumn(
+        OFWW_Expanded,
+        "GT1A_OFWW",
+        each let v = Text.Trim(Text.From([_ofww_GTA]))
+             in if [_ofww_GTA] = null or v = "" then null else v,
+        type text
+    ),
+
+    // GT1B_OFWW: returns the actual cell value from GT-B column, or null if empty
+    Add_GT1B_OFWW = Table.AddColumn(
+        Add_GT1A_OFWW,
+        "GT1B_OFWW",
+        each let v = Text.Trim(Text.From([_ofww_GTB]))
+             in if [_ofww_GTB] = null or v = "" then null else v,
+        type text
+    ),
+
+    // GT1C_OFWW: returns the actual cell value from GT-C column, or null if empty
+    Add_GT1C_OFWW = Table.AddColumn(
+        Add_GT1B_OFWW,
+        "GT1C_OFWW",
+        each let v = Text.Trim(Text.From([_ofww_GTC]))
+             in if [_ofww_GTC] = null or v = "" then null else v,
+        type text
+    ),
+
+    // Remove temporary raw OFWW indicator columns
+    OFWW_Cleaned = Table.RemoveColumns(Add_GT1C_OFWW, {"_ofww_GTA", "_ofww_GTB", "_ofww_GTC"}),
+
+    // =========================
+    // Column Renaming - Final Step
+    // =========================
+    #"Renamed All Columns" = Table.RenameColumns(OFWW_Cleaned,{
+        {"UCH.OPCRTS.AMB_D_B_T1.OUT#(lf)(AMBIENT TEMP (DRY BULB H)", "Ambient_Temp_DB"},
+        {"UCH.OPCRTS.HUMIDITY1.OUT#(lf)(RELATIVE HUMIDITY (H2 BL)", "Rel_Humidity"},
+        {"UCH.OPCRTS.10000195#(lf)(AMBIENT PRESS (H2 BLDG A)", "Ambient_Press"},
+        {"UCH.OPCRTS.AMB_B_W_T2.OUT#(lf)(COOLING TOWER AREA WET B)", "CT_Area_WB_Temp"},
+        {"UCH.OPCRTS.AMB_W_B_T1.OUT#(lf)(Wet Bulb Temp - H2 Build)", "H2_Bldg_WB_Temp"},
+        {"UCH.OPCRTS.1ACTIM.OUT#(lf)(CTG 1A COMPRESSOR INLET)", "GT1A_Comp_Inlet_Temp"},
+        {"UCH.OPCRTS.1BCTIM.OUT#(lf)(CTG 1B COMPRESSOR INLET)", "GT1B_Comp_Inlet_Temp"},
+        {"UCH.OPCRTS.1CCTIM.OUT#(lf)(CTG 1C COMPRESSOR INLET)", "GT1C_Comp_Inlet_Temp"},
+        {"UCH.OPCRTS.1ATNHRPM.OUT#(lf)(CTG 1A TURBINE SPEED)", "GT1A_Turbine_Speed"},
+        {"UCH.OPCRTS.1BTNHRPM.OUT#(lf)(CTG 1B TURBINE SPEED)", "GT1B_Turbine_Speed"},
+        {"UCH.OPCRTS.1CTNHRPM.OUT#(lf)(CTG 1C TURBINE SPEED)", "GT1C_Turbine_Speed"},
+        {"UCH.OPCRTS.TTTNHRPM.OUT#(lf)(STG HP TURBINE SPEED)", "ST_HP_Turbine_Speed"},
+        {"UCH.OPCRTS.FQI025ALHR.OUT#(lf)(Fuel Gas A MCF last hr)", "Fuel_Gas_A_MCF_Hr"},
+        {"UCH.OPCRTS.FQI025BLHR.OUT#(lf)(Fuel Gas B MCF last hr)", "Fuel_Gas_B_MCF_Hr"},
+        {"UCH.OPCRTS.FQI025ABTU.OUT#(lf)(Fuel Gas BTUs)", "Fuel_Gas_BTU"},
+        {"Uch.OPCRTS.EYJTW100.OUT#(lf)(PLANT NET LOAD)", "Plant_Net_Load"},
+        {"UCH.OPCRTS.1ADWATT.OUT#(lf)(CTG 1A GENERATOR WATTS)", "GT1A_Gen_MW"},
+        {"UCH.OPCRTS.1BDWATT.OUT#(lf)(CTG1BGENERATOR WATTS)", "GT1B_Gen_MW"},
+        {"UCH.OPCRTS.1CDWATT.OUT#(lf)(CTG 1CGENERATOR WATTS)", "GT1C_Gen_MW"},
+        {"UCH.OPCRTS.TTDWATT.OUT#(lf)(STG GENERATOR MEGAWATTS)", "ST_Gen_MW"},
+        {"UCH.OPCRTS.1ADAFEX.OUT#(lf)(GTA EX2K Generator Field)", "GT1A_Gen_Field_Amps"},
+        {"UCH.OPCRTS.1BDAFEX.OUT#(lf)(GTB EX2K Generator Field)", "GT1B_Gen_Field_Amps"},
+        {"UCH.OPCRTS.1CDAFEX.OUT#(lf)(GTC EX2K Generator Field)", "GT1C_Gen_Field_Amps"},
+        {"UCH.OPCRTS.1ADVFEX.OUT#(lf)(GTA EX2K Generator Field)", "GT1A_Gen_Field_Volts"},
+        {"UCH.OPCRTS.1BDVFEX.OUT#(lf)(GTB EX2K Generator Field)", "GT1B_Gen_Field_Volts"},
+        {"UCH.OPCRTS.1CDVFEX.OUT#(lf)(GTC EX2K Generator Field)", "GT1C_Gen_Field_Volts"},
+        {"UCH.OPCRTS.1ADPF.OUT#(lf)(CTG 1A GENERATOR PF)", "GT1A_Gen_PF"},
+        {"UCH.OPCRTS.1BDPF.OUT#(lf)(CTG1BGENERATOR POWER FAC)", "GT1B_Gen_PF"},
+        {"UCH.OPCRTS.1CDPF.OUT#(lf)(CTG 1 C GENERA TOR POWER)", "GT1C_Gen_PF"},
+        {"UCH.OPCRTS.TMPFT108.OUT#(lf)(STG FIRST STAGE BOWL LOW)", "ST_1st_Stage_Press"},
+        {"UCH.OPCRTS.1ACSGV.OUT#(lf)(CTG 1A IGV POSITION)", "GT1A_IGV_Position"},
+        {"UCH.OPCRTS.1BCSGV.OUT#(lf)(CTG 1B IGV POSITION)", "GT1B_IGV_Position"},
+        {"UCH.OPCRTS.1CCSGV.OUT#(lf)(CTG 1C IGV POSITION)", "GT1C_IGV_Position"},
+        {"UCH.OPCRTS.1ACTD.OUT#(lf)(CTG 1A COMP DISCH TEMP)", "GT1A_Comp_Disch_Temp"},
+        {"UCH.OPCRTS.1BCTD.OUT#(lf)(CTG 1B COMP DISCH TEMP)", "GT1B_Comp_Disch_Temp"},
+        {"UCH.OPCRTS.1CCTD.OUT#(lf)(CTG 1C COMP DISCH TEMP)", "GT1C_Comp_Disch_Temp"},
+        {"UCH.OPCRTS.1ACPD.OUT#(lf)(CTG 1A COMP DISCH PRESS)", "GT1A_Comp_Disch_Press"},
+        {"UCH.OPCRTS.1BCPD.OUT#(lf)(CTG 1B COMP DISCH PRESS)", "GT1B_Comp_Disch_Press"},
+        {"UCH.OPCRTS.1CCPD.OUT#(lf)(CTG 1C COMP DISCI1 PRESS)", "GT1C_Comp_Disch_Press"},
+        {"UCH.OPCRTS.1ATTXM.OUT#(lf)(CTG 1A TURB EXH AVG TEMP)", "GT1A_Turb_Exh_Temp"},
+        {"UCH.OPCRTS.1AFQG.OUT#(lf)(CTG 1A GAS FUEL FLOW)", "GT1A_Fuel_Flow"},
+        {"UCH.OPCRTS.1AFTG.OUT#(lf)(GTA gas Temp)", "GT1A_Fuel_Temp"},
+        {"UCH.OPCRTS.1BTTXM.OUT#(lf)(CTG I B TURB EXH A VG TE)", "GT1B_Turb_Exh_Temp"},
+        {"UCH.OPCRTS.1BFQG.OUT#(lf)(CTG 1B GAS FUEL FLOW)", "GT1B_Fuel_Flow"},
+        {"UCH.OPCRTS.1BFTG.OUT#(lf)(GTB gas Temp)", "GT1B_Fuel_Temp"},
+        {"UCH.OPCRTS.1CTTXM.OUT#(lf)(CTG 1C TURB EXH A VG TEM)", "GT1C_Turb_Exh_Temp"},
+        {"UCH.OPCRTS.1CFQG.OUT#(lf)(CTG 1C GAS FUEL FLOW)", "GT1C_Fuel_Flow"},
+        {"UCH.OPCRTS.1CFTG.OUT#(lf)(GTC gas Temp)", "GT1C_Fuel_Temp"},
+        {"UCH.OPCRTS.HPPT011A.OUT#(lf)(HRSG1 A HP STM HOR PRESS)", "HRSG1A_HP_Stm_Press"},
+        {"UCH.OPCRTS.HPPT011B.OUT#(lf)(HRSG 1B HP STM HOR PRESS)", "HRSG1B_HP_Stm_Press"},
+        {"UCH.OPCRTS.HPPT011C.OUT#(lf)(HRSG 1C HP STM HOR PRESS)", "HRSG1C_HP_Stm_Press"},
+        {"UCH.OPCRTS.IPPT021A.OUT#(lf)(HRSG IA IP STEAM HOR PRE)", "HRSG1A_IP_Stm_Press"},
+        {"UCH.OPCRTS.IPPT021B.OUT#(lf)(HRSG 1B IP STM HOR PRESS)", "HRSG1B_IP_Stm_Press"},
+        {"UCH.OPCRTS.IPPT021C.OUT#(lf)(HRSG 1C IP STM HDR PRESS)", "HRSG1C_IP_Stm_Press"},
+        {"UCH.OPCRTS.HPTE011A.OUT#(lf)(HRSG 1A HP STM HOR TEMP)", "HRSG1A_HP_Stm_Temp"},
+        {"UCH.OPCRTS.HPTE011B.OUT#(lf)(HRSG 1B HP STM HOR TEMP)", "HRSG1B_HP_Stm_Temp"},
+        {"UCH.OPCRTS.HPTE011C.OUT#(lf)(HRSG 1C HP STM HOR TEMP)", "HRSG1C_HP_Stm_Temp"},
+        {"UCH.OPCRTS.IPTE021A.OUT#(lf)(HRSG 1A IP STM HOR TEMP)", "HRSG1A_IP_Stm_Temp"},
+        {"UCH.OPCRTS.IPTE021B.OUT#(lf)(HRSG1BIP STM HDR TEMP)", "HRSG1B_IP_Stm_Temp"},
+        {"UCH.OPCRTS.IPTE021C.OUT#(lf)(HRSG 1C IP STM HOR TEMP)", "HRSG1C_IP_Stm_Temp"},
+        {"UCH.OPCRTS.HPFY011A1.OUT#(lf)(HRSG 1 A HP STM MASS FLO)", "HRSG1A_HP_Stm_Flow"},
+        {"UCH.OPCRTS.HPFY011B1.OUT#(lf)(HRSG 1B HP STM MASS FLOW)", "HRSG1B_HP_Stm_Flow"},
+        {"UCH.OPCRTS.HPFY011C1.OUT#(lf)(HRSG 1C HP STM MASS FLOW)", "HRSG1C_HP_Stm_Flow"},
+        {"UCH.OPCRTS.IPFT021A.OUT#(lf)(HRSG JA IP STM HDR FLOW)", "HRSG1A_IP_Stm_Flow"},
+        {"UCH.OPCRTS.IPFT021B.OUT#(lf)(HRSG 1 B IP STM HDR FLOW)", "HRSG1B_IP_Stm_Flow"},
+        {"UCH.OPCRTS.IPFT021C.OUT#(lf)(HRSG 1C IP STM HDR FLOW)", "HRSG1C_IP_Stm_Flow"},
+        {"UCH.OPCRTS.TTIS1.OUT#(lf)(STG MAIN INLET STEAM LIN)", "ST_Main_Inlet_Stm_Temp"},
+        {"UCH.OPCRTS.TTIP1.OUT#(lf)(STG HP STEAM INLET PRESS)", "ST_HP_Inlet_Press"},
+        {"UCH.OPCRTS.TTLPAS1.OUT#(lf)(STG LP ADM STEAM TEMP 1)", "ST_LP_Adm_Stm_Temp"},
+        {"UCH.OPCRTS.TTACVEFF.OUT#(lf)(STG IP STEAM ADMISSION P)", "ST_IP_Adm_Press"},
+        {"UCH.OPCRTS.TTEXH1.OUT#(lf)(STG EXHAUST STEAM TEMP 1)", "ST_Exh_Stm_Temp"},
+        {"UCH.OPCRTS.TTEVP1.OUT#(lf)(STG EXHAUST VACUUM)", "ST_Exh_Vacuum"},
+        {"UCH.OPCRTS.CDPT001A.OUT#(lf)(SURFACE CONDENSER BACK P)", "Condenser_Back_Press"},
+        {"Uch.OPCRTS.BFFT011A.OUT#(lf)(HRSGIA HP DRUM FDWTR SUP)", "HRSG1A_HP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", "HRSG1B_HP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT011C.OUT#(lf)(HRSG1C HP DRUM FDWTR SUP)", "HRSG1C_HP_FW_Temp"},
+        {"Uch.OPCRTS.BFFY011A.OUT#(lf)(HRSG 1A HP DRUM FDWTR SU)", "HRSG1A_HP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY011B.OUT#(lf)(HRSG 1B HP DRUM FDWTR SU)", "HRSG1B_HP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY011C.OUT#(lf)(HRSG 1C HP DRUM FDWTR SU)", "HRSG1C_HP_FW_Flow"},
+        {"Uch.OPCRTS.BFFT021A.OUT#(lf)(HRSG 1A IP DRUM FDWTR SU)", "HRSG1A_IP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", "HRSG1B_IP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT021C.OUT#(lf)(HRSG I C IP DRUM FDWTR S)", "HRSG1C_IP_FW_Temp"},
+        {"Uch.OPCRTS.BFFY021A.OUT#(lf)(HRSG 1A IP DRUM FD WTR S)", "HRSG1A_IP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY021B.OUT#(lf)(HRSG 1B IP DRUM FDWTR SU)", "HRSG1B_IP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY021C.OUT#(lf)(HRSG 1C IP DRUM FDWTR SU)", "HRSG1C_IP_FW_Flow"},
+        {"Uch.OPCRTS.BFFT031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", "HRSG1A_LP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", "HRSG1B_LP_FW_Temp"},
+        {"Uch.OPCRTS.BFFT031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", "HRSG1C_LP_FW_Temp"},
+        {"Uch.OPCRTS.BFFY031A.OUT#(lf)(HRSG 1A LP DRUM FDWTR SU)", "HRSG1A_LP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY031B.OUT#(lf)(HRSG 1B LP DRUM FDWTR SU)", "HRSG1B_LP_FW_Flow"},
+        {"Uch.OPCRTS.BFFY031C.OUT#(lf)(HRSG 1C LP DRUM FDWTR SU)", "HRSG1C_LP_FW_Flow"},
+        {"Uch.OPCRTS.BFTE011A.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", "HRSG1A_HP_Drum_Temp"},
+        {"Uch.OPCRTS.BFTE011B.OUT#(lf)(HRSG 1B HP DRM SUP TEMP)", "HRSG1B_HP_Drum_Temp"},
+        {"Uch.OPCRTS.BFTE011C.OUT#(lf)(HRSG IC HP DRM FDWTR SUP)", "HRSG1C_HP_Drum_Temp"},
+        {"Uch.OPCRTS.BFTE021A.OUT#(lf)(HRSG IA IP DRUM FDWTR SU)", "HRSG1A_IP_Drum_Temp"},
+        {"Uch.OPCRTS.BFTE021B.OUT#(lf)(HRSG IB IP DRM FDWTR SUP)", "HRSG1B_IP_Drum_Temp"},
+        {"Uch.OPCRTS.BFTE021C.OUT#(lf)(HRSG 1C IP DRM FDWTR SUP)", "HRSG1C_IP_Drum_Temp"},
+        {"Uch.OPCRTS.BFPT011.OUT#(lf)(BFP DISCHARGE HEADER PRE)", "BFP_Disch_HP_Press"},
+        {"Uch.OPCRTS.BFPT021.OUT#(lf)(BFP DISCH IP HDR PRESS)", "BFP_Disch_IP_Press"},
+        {"Uch.OPCRTS.LPPT031A.OUT#(lf)(HRSG1BLP STM HDR PRESS)", "HRSG1A_LP_Stm_Press"},
+        {"Uch.OPCRTS.LPPT031B.OUT#(lf)(HRSG 1C LP STM HDR PRESS)", "HRSG1B_LP_Stm_Press"},
+        {"Uch.OPCRTS.LPPT031C.OUT#(lf)(LP STEAM DUMP VALVE - O/)", "HRSG1C_LP_Stm_Press"},
+        {"Uch.OPCRTS.LPTE031A.OUT#(lf)(HRSG 1B LP STM HDR TEMP)", "HRSG1A_LP_Stm_Temp"},
+        {"Uch.OPCRTS.LPTE031B.OUT#(lf)(HRSG 1 C LP STM HDR TEMP)", "HRSG1B_LP_Stm_Temp"},
+        {"Uch.OPCRTS.LPTE031C.OUT#(lf)(STG GEN VOLTAGE (PHASE A)", "HRSG1C_LP_Stm_Temp"},
+        {"Uch.OPCRTS.HPPT002A.OUT#(lf)(HRSG 1A HP ORM PRESS - M)", "HRSG1A_HP_Drum_Press"},
+        {"Uch.OPCRTS.HPPT002B.OUT#(lf)(HRSG 1B HP ORM PRESS - M)", "HRSG1B_HP_Drum_Press"},
+        {"Uch.OPCRTS.HPPT002C.OUT#(lf)(No Description)", "HRSG1C_HP_Drum_Press"},
+        {"Uch.OPCRTS.IPPT002A2.OUT#(lf)(HRSG 1A IP DRUM STM PRES)", "HRSG1A_IP_Drum_Press"},
+        {"Uch.OPCRTS.IPPT002B.OUT#(lf)(HRSG 1B IP DRM STMPRESS)", "HRSG1B_IP_Drum_Press"},
+        {"Uch.OPCRTS.IPPT002C2.OUT#(lf)(HRSG 1C IP DRM PRESS)", "HRSG1C_IP_Drum_Press"},
+        {"Uch.OPCRTS.LPPT002A.OUT#(lf)(HRSG 1A LP DRM STM PRESS)", "HRSG1A_LP_Drum_Press"},
+        {"Uch.OPCRTS.LPPT002B2.OUT#(lf)(HRSG 1B IP DRM STM PRESS)", "HRSG1B_LP_Drum_Press"},
+        {"Uch.OPCRTS.LPPT002C.OUT#(lf)(HRSG 1C LP STM DRM PRESS)", "HRSG1C_LP_Drum_Press"},
+        {"UCH.OPCRTS.EGTE011A1.OUT#(lf)(HRSG 1A STACK INLET TEMP)", "HRSG1A_Stack_Temp"},
+        {"UCH.OPCRTS.EGTE011B1.OUT#(lf)(HRSG 1B STACK INLET TEMP)", "HRSG1B_Stack_Temp"},
+        {"UCH.OPCRTS.EGTE011C1.OUT#(lf)(HRSG 1 C STACK INLET TEM)", "HRSG1C_Stack_Temp"},
+        {"UCH.OPCRTS.CWPT004.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", "CW_Pump_Disch_Press"},
+        {"UCH.OPCRTS.CWFT016.OUT#(lf)(CIRC WTR PMPS DISCH HEAD)", "CW_Pump_Disch_Flow"},
+        {"UCH.OPCRTS.CWTE003.OUT#(lf)(CIRC WTR PMPS DISCH HDR)", "CW_Pump_Disch_Temp"},
+        {"UCH.OPCRTS.CWTE049A.OUT#(lf)(CONDENSER WATER BOX A OU)", "Cond_WB_A_Outlet_Temp"},
+        {"UCH.OPCRTS.CWTE049B.OUT#(lf)(CONDENSER WATER BOX B OU)", "Cond_WB_B_Outlet_Temp"},
+        {"UCH.OPCRTS.CWTE061.OUT#(lf)(CIRC WTR HEAT XCHANGER 3)", "CW_HX3_Temp"},
+        {"UCH.OPCRTS.CWFT028.OUT#(lf)(COOLING TOWER BLOWDOWN F)", "CT_Blowdown_Flow"},
+        {"GT-A DP", "GT1A_Diff_Press"},
+        {"GT-B DP", "GT1B_Diff_Press"},
+        {"GT-C DP", "GT1C_Diff_Press"},
+        {"GT-A GCV Position", "GT1A_GCV_Position"},
+        {"GT-B GCV Position", "GT1B_GCV_Position"},
+        {"GT-C GCV Position", "GT1C_GCV_Position"},
+        {"GT-A GCV Refrence", "GT1A_GCV_Reference"},
+        {"GT-B GCV Refrence", "GT1B_GCV_Reference"},
+        {"GT-C GCV Refrence", "GT1C_GCV_Reference"},
+        {"GT-A InterStage Gas Pressure", "GT1A_InterStg_Press"},
+        {"GT-B InterStage Gas Pressure", "GT1B_InterStg_Press"},
+        {"GT-C InterStage Gas Pressure", "GT1C_InterStg_Press"}
+    }, MissingField.Ignore)
+in
+    #"Renamed All Columns"

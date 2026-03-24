@@ -1,0 +1,42 @@
+// Power Query : fnCF_CIT
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 4 OF 12:  fnCF_CIT
+// CFs #1–5  |  Input: CIT_degC
+// Returns a record with all 5 CIT correction factor values
+// SETTING: Connection Only (CF function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(CIT_degC as number) as record =>
+let
+    xCIT = {-17.78, -11.3, -4.81, 1.67, 8.15, 14.63, 21.11, 27.3, 34.07, 40.56},
+    
+    // CF#1 — Exhaust Pressure from CIT  (mmH₂O, absolute — NOT a ratio)
+    yExhP  = {475.99, 454.47, 433.59, 413.39, 393.81, 374.59, 
+              355.68, 337.79, 317.24, 296.99},
+    
+    // CF#2 — Output Ratio
+    yOutR  = {1.291, 1.24939, 1.20748, 1.16576, 1.12414, 1.08234, 
+              1.04037, 1.0, 0.95047, 0.89584},
+    
+    // CF#3 — Heat Rate Ratio
+    yHRR   = {0.95559, 0.95966, 0.96444, 0.96982, 0.97589, 0.9828, 
+              0.99094, 1.0, 1.01197, 1.02672},
+    
+    // CF#4 — Exhaust Flow Ratio
+    yExhFR = {1.20345, 1.17356, 1.14399, 1.11485, 1.08601, 1.05712, 
+              1.02808, 1.0, 0.96781, 0.93642},
+    
+    // CF#5 — Exhaust Temperature Difference (°C, additive)
+    yExhTd = {-32.11, -27.43, -22.8, -18.21, -13.66, -9.08, 
+              -4.47, 0.0, 3.18, 3.18}
+in
+    [
+        CF1_ExhaustPressure_mmH2O = fnInterp1D(xCIT, yExhP,  CIT_degC),
+        CF2_OutputRatio           = fnInterp1D(xCIT, yOutR,  CIT_degC),
+        CF3_HeatRateRatio         = fnInterp1D(xCIT, yHRR,   CIT_degC),
+        CF4_ExhaustFlowRatio      = fnInterp1D(xCIT, yExhFR, CIT_degC),
+        CF5_ExhaustTempDiff_degC  = fnInterp1D(xCIT, yExhTd, CIT_degC)
+    ]

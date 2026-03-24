@@ -1,0 +1,316 @@
+// Power Query : GT_Combined_Summary
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// Power Query : GT_Combined_Summary
+// Workbook    : UCH 1 2026 Heat Rate Analysis.xlsm
+// ────────────────────────────────────────────────────────────
+// Purpose      : Stacks GT1A, GT1B, GT1C performance rows and appends a TOTAL row
+//                per (Date Only + Hour). Sums MMBTU_hr, Gen MW, Corrected Output (MW).
+// Setting      : Load to Worksheet
+// ────────────────────────────────────────────────────────────
+
+let
+
+    // ── 1. Slim each source to required columns + rename unit-specific cols ────
+
+    SlimA = Table.SelectColumns(
+        GT1A_Performance,
+        {
+            "Date Only", "Hour", "Time Stamp", "GT_Unit",
+            "Ambient_Temp_DB", "Rel_Humidity", "Ambient_Press",
+            "Calculated_WB_Temp",
+            "GT1A_Comp_Inlet_Temp", "GT1A_Turb_Exh_Temp", "GT1A_Gen_MW",
+            "RH_at_CIT",
+            "EvapCooler_Eff_Calc_WB", "Cooler_Status",
+            "MMBTU_hr",
+            "GTHeatRate_BTU_kWh",
+            "CorrectedOutput_MW",
+            "CorrectedHeatRate_BTU_kWh",
+            "CorrectedExhaustTemp", "CorrectedExhaustFlow",
+            "Compressor_PR", "Compressor_Efficiency",
+            "GT1A_OFWW",
+            "MW_CIT", "MW_RH", "MW_SS", "MW_FuelTemp", "MW_InletDP",
+            "MW_ExhPress", "MW_ExhDP", "MW_BaroPress", "MW_FuelComp",
+            "HR_CIT", "HR_RH", "HR_SS", "HR_FuelTemp", "HR_InletDP",
+            "HR_ExhPress", "HR_ExhDP", "HR_BaroPress", "HR_FuelComp"
+        }
+    ),
+    RenameA = Table.RenameColumns(SlimA, {
+        {"GT1A_Comp_Inlet_Temp", "Comp_Inlet_Temp"},
+        {"GT1A_Turb_Exh_Temp",   "Turb_Exh_Temp"},
+        {"GT1A_Gen_MW",          "Gen_MW"},
+        {"GT1A_OFWW",            "OFWW"}
+    }),
+
+    SlimB = Table.SelectColumns(
+        GT1B_Performance,
+        {
+            "Date Only", "Hour", "Time Stamp", "GT_Unit",
+            "Ambient_Temp_DB", "Rel_Humidity", "Ambient_Press",
+            "Calculated_WB_Temp",
+            "GT1B_Comp_Inlet_Temp", "GT1B_Turb_Exh_Temp", "GT1B_Gen_MW",
+            "RH_at_CIT",
+            "EvapCooler_Eff_Calc_WB", "Cooler_Status",
+            "MMBTU_hr",
+            "GTHeatRate_BTU_kWh",
+            "CorrectedOutput_MW",
+            "CorrectedHeatRate_BTU_kWh",
+            "CorrectedExhaustTemp", "CorrectedExhaustFlow",
+            "Compressor_PR", "Compressor_Efficiency",
+            "GT1B_OFWW",
+            "MW_CIT", "MW_RH", "MW_SS", "MW_FuelTemp", "MW_InletDP",
+            "MW_ExhPress", "MW_ExhDP", "MW_BaroPress", "MW_FuelComp",
+            "HR_CIT", "HR_RH", "HR_SS", "HR_FuelTemp", "HR_InletDP",
+            "HR_ExhPress", "HR_ExhDP", "HR_BaroPress", "HR_FuelComp"
+        }
+    ),
+    RenameB = Table.RenameColumns(SlimB, {
+        {"GT1B_Comp_Inlet_Temp", "Comp_Inlet_Temp"},
+        {"GT1B_Turb_Exh_Temp",   "Turb_Exh_Temp"},
+        {"GT1B_Gen_MW",          "Gen_MW"},
+        {"GT1B_OFWW",            "OFWW"}
+    }),
+
+    SlimC = Table.SelectColumns(
+        GT1C_Performance,
+        {
+            "Date Only", "Hour", "Time Stamp", "GT_Unit",
+            "Ambient_Temp_DB", "Rel_Humidity", "Ambient_Press",
+            "Calculated_WB_Temp",
+            "GT1C_Comp_Inlet_Temp", "GT1C_Turb_Exh_Temp", "GT1C_Gen_MW",
+            "RH_at_CIT",
+            "EvapCooler_Eff_Calc_WB", "Cooler_Status",
+            "MMBTU_hr",
+            "GTHeatRate_BTU_kWh",
+            "CorrectedOutput_MW",
+            "CorrectedHeatRate_BTU_kWh",
+            "CorrectedExhaustTemp", "CorrectedExhaustFlow",
+            "Compressor_PR", "Compressor_Efficiency",
+            "GT1C_OFWW",
+            "MW_CIT", "MW_RH", "MW_SS", "MW_FuelTemp", "MW_InletDP",
+            "MW_ExhPress", "MW_ExhDP", "MW_BaroPress", "MW_FuelComp",
+            "HR_CIT", "HR_RH", "HR_SS", "HR_FuelTemp", "HR_InletDP",
+            "HR_ExhPress", "HR_ExhDP", "HR_BaroPress", "HR_FuelComp"
+        }
+    ),
+    RenameC = Table.RenameColumns(SlimC, {
+        {"GT1C_Comp_Inlet_Temp", "Comp_Inlet_Temp"},
+        {"GT1C_Turb_Exh_Temp",   "Turb_Exh_Temp"},
+        {"GT1C_Gen_MW",          "Gen_MW"},
+        {"GT1C_OFWW",            "OFWW"}
+    }),
+
+    // ── 2. Stack all three ────────────────────────────────────────────────────
+
+    Stacked = Table.Combine({RenameA, RenameB, RenameC}),
+
+    // ── 3. Add Month column ───────────────────────────────────────────────────
+
+    AddMonth = Table.AddColumn(
+        Stacked, "Month",
+        each Date.ToText([Date Only], "MMM-yyyy"),
+        type text
+    ),
+
+    // ── 4. Add GT Efficiency = 3412.14 / GTHeatRate_BTU_kWh ──────────────────
+    // 3412.14 BTU/kWh = 1 kWh (100% efficiency baseline)
+
+    AddGTEff = Table.AddColumn(AddMonth, "GT_Efficiency",
+        each let HR = [GTHeatRate_BTU_kWh]
+             in if HR = null or HR <= 0 then null
+                else 3412.14 / HR,
+        type number),
+
+    // ── 5. Add Corrected GT Efficiency = 3412.14 / CorrectedHeatRate_BTU_kWh ─
+
+    AddCorrGTEff = Table.AddColumn(AddGTEff, "Corrected_GT_Efficiency",
+        each let HR = [CorrectedHeatRate_BTU_kWh]
+             in if HR = null or HR <= 0 then null
+                else 3412.14 / HR,
+        type number),
+
+    // ── 6. Build TOTAL rows per (Date Only + Hour) ────────────────────────────
+    //      Sum  : MMBTU_hr, Gen_MW, CorrectedOutput_MW
+    //      Null : all other numeric columns
+
+    Grouped = Table.Group(
+        AddCorrGTEff,
+        {"Date Only", "Hour"},
+        {
+            {"Time Stamp",                each List.Min([Time Stamp]),         type datetime},
+            {"Month",                     each List.First([Month]),            type text},
+            {"MMBTU_hr",                  each List.Sum([MMBTU_hr]),           type number},
+            {"Gen_MW",                    each List.Sum([Gen_MW]),             type number},
+            {"CorrectedOutput_MW",        each List.Sum([CorrectedOutput_MW]), type number},
+            {"Ambient_Temp_DB",           each null, type number},
+            {"Rel_Humidity",              each null, type number},
+            {"Ambient_Press",             each null, type number},
+            {"Calculated_WB_Temp",        each null, type number},
+            {"Comp_Inlet_Temp",           each null, type number},
+            {"RH_at_CIT",                 each null, type number},
+            {"EvapCooler_Eff_Calc_WB",    each null, type number},
+            {"Turb_Exh_Temp",             each null, type number},
+            {"GTHeatRate_BTU_kWh",        each null, type number},
+            {"GT_Efficiency",             each null, type number},
+            {"CorrectedHeatRate_BTU_kWh", each null, type number},
+            {"Corrected_GT_Efficiency",   each null, type number},
+            {"CorrectedExhaustTemp",      each null, type number},
+            {"CorrectedExhaustFlow",      each null, type number},
+            {"Compressor_PR",             each null, type number},
+            {"Compressor_Efficiency",     each null, type number},
+            {"OFWW",                      each null, type text},
+            // MW impacts: sum across GTs (extensive quantity)
+            {"MW_CIT",       each List.Sum([MW_CIT]),       type number},
+            {"MW_RH",        each List.Sum([MW_RH]),        type number},
+            {"MW_SS",        each List.Sum([MW_SS]),        type number},
+            {"MW_FuelTemp",  each List.Sum([MW_FuelTemp]),  type number},
+            {"MW_InletDP",   each List.Sum([MW_InletDP]),   type number},
+            {"MW_ExhPress",  each List.Sum([MW_ExhPress]),  type number},
+            {"MW_ExhDP",     each List.Sum([MW_ExhDP]),     type number},
+            {"MW_BaroPress", each List.Sum([MW_BaroPress]), type number},
+            {"MW_FuelComp",  each List.Sum([MW_FuelComp]),  type number},
+            // HR impacts: null for TOTAL (intensive quantity, BTU/kWh)
+            {"HR_CIT",       each null, type number},
+            {"HR_RH",        each null, type number},
+            {"HR_SS",        each null, type number},
+            {"HR_FuelTemp",  each null, type number},
+            {"HR_InletDP",   each null, type number},
+            {"HR_ExhPress",  each null, type number},
+            {"HR_ExhDP",     each null, type number},
+            {"HR_BaroPress", each null, type number},
+            {"HR_FuelComp",  each null, type number}
+        }
+    ),
+
+    // Tag TOTAL rows
+    TotalRows  = Table.AddColumn(Grouped,   "GT_Unit",       each "TOTAL", type text),
+    TotalRows2 = Table.AddColumn(TotalRows, "Cooler_Status", each null,    type text),
+
+    // ── 7. Align TOTAL row column order with detail rows ─────────────────────
+
+    ColOrder = {
+        "Month", "Time Stamp", "Date Only", "Hour",
+        "Ambient_Temp_DB", "Rel_Humidity", "Ambient_Press", "Calculated_WB_Temp",
+        "GT_Unit", "Comp_Inlet_Temp", "RH_at_CIT", "EvapCooler_Eff_Calc_WB", "Cooler_Status",
+        "Turb_Exh_Temp", "MMBTU_hr", "Gen_MW",
+        "GTHeatRate_BTU_kWh", "GT_Efficiency",
+        "CorrectedOutput_MW", "CorrectedHeatRate_BTU_kWh", "Corrected_GT_Efficiency",
+        "Compressor_PR", "Compressor_Efficiency",
+        "CorrectedExhaustTemp", "CorrectedExhaustFlow",
+        "OFWW",
+        "MW_CIT", "MW_RH", "MW_SS", "MW_FuelTemp", "MW_InletDP",
+        "MW_ExhPress", "MW_ExhDP", "MW_BaroPress", "MW_FuelComp",
+        "HR_CIT", "HR_RH", "HR_SS", "HR_FuelTemp", "HR_InletDP",
+        "HR_ExhPress", "HR_ExhDP", "HR_BaroPress", "HR_FuelComp"
+    },
+
+    TotalOrdered  = Table.ReorderColumns(TotalRows2, ColOrder),
+    DetailOrdered = Table.ReorderColumns(AddCorrGTEff, ColOrder),
+
+    // ── 8. Interleave: GT1A → GT1B → GT1C → TOTAL per hour ──────────────────
+
+    AddSortKey = Table.AddColumn(DetailOrdered, "_SortKey",
+        each if [GT_Unit] = "GT1A" then 1
+             else if [GT_Unit] = "GT1B" then 2
+             else 3,
+        type number),
+
+    AddSortKeyTotal = Table.AddColumn(TotalOrdered, "_SortKey", each 4, type number),
+
+    Combined = Table.Combine({AddSortKey, AddSortKeyTotal}),
+
+    Sorted = Table.Sort(Combined, {
+        {"Date Only", Order.Ascending},
+        {"Hour",      Order.Ascending},
+        {"_SortKey",  Order.Ascending}
+    }),
+
+    DropSortKey = Table.RemoveColumns(Sorted, {"_SortKey"}),
+
+    // ── 9. Rename to friendly display names ──────────────────────────────────
+
+    Renamed = Table.RenameColumns(DropSortKey, {
+        {"Date Only",              "Date"},
+        {"Ambient_Temp_DB",        "Ambient Temp DB (°C)"},
+        {"Rel_Humidity",           "Rel Humidity (%)"},
+        {"Ambient_Press",          "Ambient Press (mbar)"},
+        {"Calculated_WB_Temp",     "Calculated WB Temp (°C)"},
+        {"GT_Unit",                "Gas Turbine"},
+        {"Comp_Inlet_Temp",        "Comp Inlet Temp (°C)"},
+        {"RH_at_CIT",              "RH at Comp Inlet (%)"},
+        {"EvapCooler_Eff_Calc_WB", "Evap Cooler Eff Calc WB"},
+        {"Cooler_Status",          "Cooler Status"},
+        {"Turb_Exh_Temp",          "Turb Exh Temp (°C)"},
+        {"MMBTU_hr",               "MMBTU/hr"},
+        {"Gen_MW",                 "Gen MW"},
+        {"GTHeatRate_BTU_kWh",     "Heat Rate (BTU/kWh)"},
+        {"GT_Efficiency",          "GT Efficiency"},
+        {"CorrectedOutput_MW",     "Corrected Output (MW)"},
+        {"CorrectedHeatRate_BTU_kWh", "Corrected Heat Rate (BTU/kWh)"},
+        {"Corrected_GT_Efficiency","Corrected GT Efficiency"},
+        {"Compressor_PR",          "Compressor PR"},
+        {"Compressor_Efficiency",  "Compressor Efficiency"},
+        {"CorrectedExhaustTemp",   "Corrected Exhaust Temp (°C)"},
+        {"CorrectedExhaustFlow",   "Corrected Exhaust Flow (kg/s)"},
+        {"MW_CIT",       "MW Impact CIT"},
+        {"MW_RH",        "MW Impact RH"},
+        {"MW_SS",        "MW Impact SS"},
+        {"MW_FuelTemp",  "MW Impact FuelTemp"},
+        {"MW_InletDP",   "MW Impact InletDP"},
+        {"MW_ExhPress",  "MW Impact ExhPress"},
+        {"MW_ExhDP",     "MW Impact ExhDP"},
+        {"MW_BaroPress", "MW Impact BaroPress"},
+        {"MW_FuelComp",  "MW Impact FuelComp"},
+        {"HR_CIT",       "HR Impact CIT (BTU/kWh)"},
+        {"HR_RH",        "HR Impact RH (BTU/kWh)"},
+        {"HR_SS",        "HR Impact SS (BTU/kWh)"},
+        {"HR_FuelTemp",  "HR Impact FuelTemp (BTU/kWh)"},
+        {"HR_InletDP",   "HR Impact InletDP (BTU/kWh)"},
+        {"HR_ExhPress",  "HR Impact ExhPress (BTU/kWh)"},
+        {"HR_ExhDP",     "HR Impact ExhDP (BTU/kWh)"},
+        {"HR_BaroPress", "HR Impact BaroPress (BTU/kWh)"},
+        {"HR_FuelComp",  "HR Impact FuelComp (BTU/kWh)"}
+    }),
+
+    // ── 10. Final column order ────────────────────────────────────────────────
+
+    FinalOutput = Table.ReorderColumns(Renamed, {
+        "Month",
+        "Time Stamp",
+        "Date",
+        "Hour",
+        "Ambient Temp DB (°C)",
+        "Rel Humidity (%)",
+        "Ambient Press (mbar)",
+        "Calculated WB Temp (°C)",
+        "Gas Turbine",
+        "Comp Inlet Temp (°C)",
+        "RH at Comp Inlet (%)",
+        "Evap Cooler Eff Calc WB",
+        "Cooler Status",
+        "Turb Exh Temp (°C)",
+        "MMBTU/hr",
+        "Gen MW",
+        "Heat Rate (BTU/kWh)",
+        "GT Efficiency",
+        "Corrected Output (MW)",
+        "Corrected Heat Rate (BTU/kWh)",
+        "Corrected GT Efficiency",
+        "Compressor PR",
+        "Compressor Efficiency",
+        "Corrected Exhaust Temp (°C)",
+        "Corrected Exhaust Flow (kg/s)",
+        "OFWW",
+        "MW Impact CIT", "MW Impact RH", "MW Impact SS",
+        "MW Impact FuelTemp", "MW Impact InletDP",
+        "MW Impact ExhPress", "MW Impact ExhDP",
+        "MW Impact BaroPress", "MW Impact FuelComp",
+        "HR Impact CIT (BTU/kWh)", "HR Impact RH (BTU/kWh)", "HR Impact SS (BTU/kWh)",
+        "HR Impact FuelTemp (BTU/kWh)", "HR Impact InletDP (BTU/kWh)",
+        "HR Impact ExhPress (BTU/kWh)", "HR Impact ExhDP (BTU/kWh)",
+        "HR Impact BaroPress (BTU/kWh)", "HR Impact FuelComp (BTU/kWh)"
+    })
+
+in
+    FinalOutput

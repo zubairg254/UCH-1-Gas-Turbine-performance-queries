@@ -1,0 +1,14 @@
+// Power Query : fnInterpFuelCurve
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 3 OF 12:  fnInterpFuelCurve
+// Purpose: Interpolate within a single H/C sub-curve (3 LHV breakpoints)
+// SETTING: Connection Only (helper function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(FuelLHV as number,
+ lhv0 as number, lhv1 as number, lhv2 as number,
+ v0   as number, v1   as number, v2   as number) as any =>
+    fnInterp1D({lhv0, lhv1, lhv2}, {v0, v1, v2}, FuelLHV)

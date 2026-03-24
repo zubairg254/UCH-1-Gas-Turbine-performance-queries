@@ -1,0 +1,1005 @@
+// Power Query : GT1B_Performance
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// Power Query : GT1B_Performance
+// Workbook    : UCH 1 2026 Heat Rate Analysis.xlsm
+// ────────────────────────────────────────────────────────────
+// Purpose      : Calculates corrected performance metrics for GT1B.
+//                Applies all 33 correction factors (CIT, RH, ShaftSpeed, FuelTemp,
+//                InletDP, ExhaustPressure, ExhaustDP, BaroPressure, FuelComp).
+// Setting      : Load to Worksheet
+// ────────────────────────────────────────────────────────────
+
+let
+
+    // ── 0. Configuration ──────────────────────────────────────────────────────
+    // Set the start date here — all rows on or after this date will be processed.
+
+    StartYear  = 1900,    // ◄ Set to 1900 to pass all records (no date restriction)
+
+    StartMonth = 1,       // ◄ Change month (1 = Jan … 12 = Dec)
+
+    StartDay   = 1,       // ◄ Change day   (1 – 31)
+
+    StartFrom  = #date(StartYear, StartMonth, StartDay),
+
+    // ── 1. Load source table — keep only ambient + GTA columns ───────────────
+
+    Source = #"Base Data 2026",
+
+    // Select ONLY the columns needed: timestamps, ambient conditions, and GT1B measurements
+
+    SelectedColumns = Table.SelectColumns(Source, {
+
+        // ── Timestamp / index columns ──
+
+        "Date Only",
+
+        "Hour",
+
+        "Time Stamp",
+
+        // ── Ambient condition columns ──
+
+        "Ambient_Temp_DB",
+
+        "Rel_Humidity",
+
+        "Ambient_Press",
+
+        "H2_Bldg_WB_Temp",
+
+        // ── GTB-specific measurement columns ──
+
+        "GT1B_Gen_MW",
+
+        "GT1B_Fuel_Flow",
+
+        "GT1B_Comp_Inlet_Temp",
+
+        "GT1B_Turb_Exh_Temp",
+
+        "GT1B_Comp_Disch_Temp",
+
+        "GT1B_Comp_Disch_Press",
+
+        "GT1B_Diff_Press",
+
+        "GT1B_IGV_Position",
+
+        "GT1B_Fuel_Temp",       // GTA fuel gas temperature
+
+        "GT1B_Turbine_Speed",   // GTB turbine speed (rpm) — used for ShaftSpeedRatio
+
+        "GT1B_OFWW"             // Offline Water Wash indicator for GT1B
+    }),
+
+    // ── 2. Filter rows: only process from StartFrom date onward ──────────────
+
+    FilteredByDate = Table.SelectRows(
+
+        SelectedColumns,
+
+        each [Date Only] >= StartFrom
+
+    ),
+
+    // ── 3. Join fuel composition data ────────────────────────────────────────
+    // Change 1: Filter null dates from FuelComp before joining
+    FuelComp = Excel.CurrentWorkbook(){[Name="Daily_fuel_gas_composition"]}[Content],
+
+    FuelComp_Typed = Table.TransformColumnTypes(
+
+        FuelComp,
+
+        {{"Date", type date}}
+
+    ),
+
+    // Change 1: Remove rows where Date is null or blank
+    FilteredFuelGas = Table.SelectRows(FuelComp_Typed, each [Date] <> null and [Date] <> ""),
+
+    // Change 3: Use "UCH 1 LHV #(lf)Btu/lbm" instead of "LHV #(lf)Btu/lbm"
+    FuelComp_Slim = Table.SelectColumns(FilteredFuelGas,{"Date", "Uch 1 LHV BTU/lbm", "H/C Ratio", "UCH 1 GCV"}),
+
+    FuelComp_Clean = Table.ReplaceErrorValues(FuelComp_Slim, {{"Uch 1 LHV BTU/lbm", 0}, {"H/C Ratio", 0}, {"UCH 1 GCV", 0}}),
+
+    // Change 1: Use Inner Join so unmatched base data rows are excluded automatically
+    Joined = Table.NestedJoin(
+
+        FilteredByDate, "Date Only",
+
+        FuelComp_Clean, "Date",
+
+        "FuelComp",
+
+        JoinKind.Inner
+
+    ),
+
+    // Change 3: Expand using new source column name; internal name remains LHV_Btu_lbm
+    Expanded = Table.ExpandTableColumn(
+
+        Joined,
+
+        "FuelComp",
+
+        {"Uch 1 LHV BTU/lbm", "H/C Ratio", "UCH 1 GCV"},
+
+        {"LHV_Btu_lbm", "HC_Ratio", "HHV_BTU_SCF"}
+
+    ),
+
+    // Inner join already excludes nulls; this guard retained for safety
+    Filtered = Table.SelectRows(Expanded, each ([LHV_Btu_lbm] <> null and [LHV_Btu_lbm] <> 0)),
+
+    // ── 4. Calculate Wet Bulb Temperature (ASHRAE Hyland-Wexler) ─────────────
+
+    AddCalculatedWB = Table.AddColumn(
+
+        Filtered,
+
+        "Calculated_WB_Temp",
+
+        each
+
+            let
+
+                T_db = [Ambient_Temp_DB],
+
+                RH   = [Rel_Humidity],
+
+                P    = [Ambient_Press] / 10,
+
+                Pws = (T_celsius as number) as number =>
+
+                    let
+
+                        T_k     = T_celsius + 273.15,
+
+                        C1      = -5.8002206e3,
+
+                        C2      =  1.3914993,
+
+                        C3      = -4.8640239e-2,
+
+                        C4      =  4.1764768e-5,
+
+                        C5      = -1.4452093e-8,
+
+                        C7      =  6.5459673,
+
+                        lnPws   = C1 / T_k
+
+                                + C2
+
+                                + C3 * T_k
+
+                                + C4 * T_k * T_k
+
+                                + C5 * T_k * T_k * T_k
+
+                                + C7 * Number.Log(T_k),
+
+                        Pws_Pa  = Number.Exp(lnPws),
+
+                        Pws_kPa = Pws_Pa / 1000
+
+                    in
+
+                        Pws_kPa,
+
+                Pws_db = Pws(T_db),
+
+                Pw     = (RH / 100) * Pws_db,
+
+                W      = 0.621945 * Pw / (P - Pw),
+
+                h_db   = 1.006 * T_db + W * (2501 + 1.86 * T_db),
+
+                IterateWB = List.Generate(
+
+                    () => [Twb = T_db, hwb = 0.0, iteration = 0],
+
+                    each Number.Abs([hwb] - h_db) > 0.001 and [iteration] < 50,
+
+                    each
+
+                        let
+
+                            Pws_wb   = Pws([Twb]),
+
+                            Ws_wb    = 0.621945 * Pws_wb / (P - Pws_wb),
+
+                            hwb_calc = 1.006 * [Twb] + Ws_wb * (2501 + 1.86 * [Twb]),
+
+                            Twb_new  = [Twb] - (hwb_calc - h_db) / 10
+
+                        in
+
+                            [Twb = Twb_new, hwb = hwb_calc, iteration = [iteration] + 1]
+
+                ),
+
+                Result =
+
+                    if T_db = null or RH = null or P = null then null
+
+                    else if RH < 0 or RH > 100             then null
+
+                    else if P <= 0                         then null
+
+                    else List.Last(IterateWB)[Twb]
+
+            in
+
+                Result,
+
+        type number
+
+    ),
+
+    // Enforce numeric types on GT1B measurement columns
+
+    Typed = Table.TransformColumnTypes(AddCalculatedWB, {
+
+        {"GT1B_Comp_Inlet_Temp", type number},
+
+        {"GT1B_Turb_Exh_Temp", type number},
+
+        {"GT1B_Comp_Disch_Temp", type number},
+
+        {"GT1B_Comp_Disch_Press", type number},
+
+        {"GT1B_IGV_Position", type number},
+
+        {"Rel_Humidity", type number},
+
+        {"Ambient_Temp_DB", type number},
+
+        {"Ambient_Press", type number},
+
+        {"GT1B_Fuel_Flow", type number},
+
+        {"GT1B_Gen_MW", type number},
+
+        {"LHV_Btu_lbm", type number},
+        {"HHV_BTU_SCF", type number},
+
+        {"HC_Ratio", type number},
+
+        {"H2_Bldg_WB_Temp", type number},
+
+        {"GT1B_Fuel_Temp", type number},
+
+        {"GT1B_Turbine_Speed", type number},
+
+        {"GT1B_Diff_Press", type number}
+
+    }),
+
+    // Add calculated columns for CF function inputs
+
+    AddCalcColumns = Table.AddColumn(
+
+        Table.AddColumn(
+
+            Table.AddColumn(
+
+                Table.AddColumn(
+
+                    Table.AddColumn(Typed, "CIT_degC", each [GT1B_Comp_Inlet_Temp], type number),
+
+                    "RH_pct", each [Rel_Humidity], type number),
+
+                "BaroPressure_mbara", each [Ambient_Press], type number), // already in mbar/hPa
+
+            "FuelLHV_kJkg", each [LHV_Btu_lbm] * 2.326, type number), // Btu/lbm to kJ/kg
+
+        "HC_ratio", each if [HC_Ratio] = null or [HC_Ratio] = 0 then 4.0 else [HC_Ratio], type number),
+
+    // ── Compute RH at Compressor Inlet (after evap cooler) ──────────────────
+    // Uses fnRH_at_Comp_Inlet: conserves humidity ratio W through the evap cooler
+    // (isenthalpic process). Returns RH as % (0-100). Falls back to ambient RH
+    // if result is null (e.g. evap cooler OFF / no temperature drop).
+    AddRH_at_CIT = Table.AddColumn(AddCalcColumns, "RH_at_CIT",
+        each
+            let
+                rh_calc = fnRH_at_Comp_Inlet(
+                    [GT1B_Comp_Inlet_Temp],
+                    [Ambient_Temp_DB],
+                    [Rel_Humidity],
+                    [Ambient_Press]
+                )
+            in
+                if rh_calc = null then [Rel_Humidity] else rh_calc,
+        type number),
+
+    // Add default parameters and GT1B-specific measurements
+
+    AddDefaults = Table.AddColumn(
+
+        Table.AddColumn(
+
+            Table.AddColumn(
+
+                Table.AddColumn(
+
+                    Table.AddColumn(
+
+                        Table.AddColumn(
+
+                            Table.AddColumn(
+
+                                Table.AddColumn(
+
+                                    Table.AddColumn(AddRH_at_CIT,
+
+                                        // ShaftSpeedRatio = measured rpm / rated rpm (3000)
+
+                                        "ShaftSpeedRatio",
+
+                                            each let spd = [GT1B_Turbine_Speed]
+
+                                                 in if spd = null or spd = 0 then 1.0
+
+                                                    else spd / 3000,
+
+                                            type number),
+
+                                    // Use measured GTA fuel gas temp; fall back to 15 °C if null
+
+                                    "FuelTemp_degC",
+
+                                        each if [GT1B_Fuel_Temp] = null then 15
+
+                                             else [GT1B_Fuel_Temp],
+
+                                        type number),
+
+                                // InletDP: GT1B_Diff_Press is in inches H₂O → convert to mm H₂O (×25.4)
+                                // Clamped to fnCF_InletDP table bounds [76.2, 177.8] mm H₂O
+
+                                "InletDP_mmH2O",
+
+                                    each let dp = [GT1B_Diff_Press],
+
+                                             dp_mm = if dp = null then 76.2 else dp * 25.4
+
+                                         in if dp_mm < 76.2  then 76.2
+
+                                            else if dp_mm > 177.8 then 177.8
+
+                                            else dp_mm,
+
+                                    type number),
+
+                            // DeltaExhDP: signed deviation from design back-pressure (CF1).
+                            // No measured exhaust pressure sensor — default 0 (= at design point).
+
+                            "DeltaExhDP_mmH2O", each 0, type number),
+
+                        // ExhaustDP: absolute HRSG duct DP — default 10.5 in H₂O = 266.7 mm H₂O
+
+                        "ExhaustDP_mmH2O", each 10.5 * 25.4, type number),
+
+                    "GT_Unit", each "GT1B", type text),
+
+                "MeasuredOutput_MW", each [GT1B_Gen_MW], type number),
+
+            "FuelFlow_kg_s", each [GT1B_Fuel_Flow], type number),
+
+        "MeasuredHeatRate",
+
+            each let FF=[GT1B_Fuel_Flow], LHV=[LHV_Btu_lbm], MW=[GT1B_Gen_MW]
+
+                 in if FF=null or LHV=null or MW=null or MW<=0 then null
+
+                    else (FF*2.20462*LHV*3.6)/MW,
+
+            type number),
+
+    // ── 5. Call all CF function groups, expand records into columns ──────────
+    // ── Add measured exhaust columns ───────────────────────────────────────
+    // Excel method HR: kg/s → Nm³/hr (÷0.9987) → SCF/hr (×35.31467) → BTU/hr HHV (×GCV) → BTU/hr LHV (÷1.109) → BTU/kWh
+    AddMeasHR_Excel = Table.AddColumn(AddDefaults, "GTHeatRate_BTU_kWh",
+        each
+            let FF=[GT1B_Fuel_Flow], HHV=[HHV_BTU_SCF], MW=[GT1B_Gen_MW]
+            in if FF=null or HHV=null or HHV=0 or MW=null or MW<=0 then null
+               else ((FF * 3600 / 0.9987 * 35.31467) * HHV / 1.109) / (MW * 1000),
+        type number),
+
+    AddMeasExhTemp = Table.AddColumn(AddMeasHR_Excel, "MeasuredExhaustTemp",
+        each [GT1B_Turb_Exh_Temp], type number),
+
+    // ── Estimated Exhaust Flow — GE MS9001E (Frame 9E) mass balance ──────────────────
+    // ExhaustFlow = AirFlow + FuelFlow
+    // AirFlow (kg/s) = 410 × (IGV / 84) × (P_amb_mbar / 1013.25) × √(288.15 / T_inlet_K)
+    //   410 kg/s  = MS9001E ISO base-load air flow at IGV=84°, 15°C, 1013.25 mbar
+    //   IGV / 84  = linear IGV correction (design angle = 84°)
+    //   P / 1013.25 = ambient pressure ratio (Ambient_Press is in mbar/hPa)
+    //   √(288.15/T_K) = inlet temperature correction (corrected flow scaling)
+    //   FuelFlow_kg_s = GT1B_Fuel_Flow already in kg/s (GE Speedtronic output)
+    AddMeasExhFlow = Table.AddColumn(AddMeasExhTemp, "MeasuredExhaustFlow",
+        each
+            let
+                IGV      = [GT1B_IGV_Position],
+                T_C      = [GT1B_Comp_Inlet_Temp],
+                P_mbar   = [Ambient_Press],
+                FF_kg_s  = [FuelFlow_kg_s],
+                T_K      = if T_C = null then 288.15 else T_C + 273.15,
+                P_ratio  = if P_mbar = null or P_mbar = 0
+                               then 1.0
+                               else P_mbar / 1013.25,
+                IGV_fac  = if IGV = null or IGV = 0
+                               then 1.0
+                               else IGV / 84,
+                T_corr   = Number.Sqrt(288.15 / T_K),
+                AirFlow  = 410 * IGV_fac * P_ratio * T_corr,
+                ExhFlow  = AirFlow + (if FF_kg_s = null then 0 else FF_kg_s)
+            in
+                ExhFlow,
+        type number),
+
+    AddCIT = Table.AddColumn(AddMeasExhFlow, "_cit",
+
+        each fnCF_CIT([CIT_degC])),
+
+    AddRH = Table.AddColumn(AddCIT, "_rh",
+
+        each fnCF_RH([RH_at_CIT], [CIT_degC])),
+
+    AddSS = Table.AddColumn(AddRH, "_ss",
+
+        each fnCF_ShaftSpeed([ShaftSpeedRatio], [CIT_degC])),
+
+    AddFT = Table.AddColumn(AddSS, "_ft",
+
+        each fnCF_FuelTemp([FuelTemp_degC])),
+
+    AddIN = Table.AddColumn(AddFT, "_in",
+
+        each fnCF_InletDP([InletDP_mmH2O], [CIT_degC])),
+
+    AddEP = Table.AddColumn(AddIN, "_ep",
+
+        each fnCF_ExhaustPressure([DeltaExhDP_mmH2O], [CIT_degC])),
+
+    AddED = Table.AddColumn(AddEP, "_ed",
+
+        each fnCF_ExhaustDP([ExhaustDP_mmH2O])),
+
+    AddBP = Table.AddColumn(AddED, "_bp",
+
+        each fnCF_BaroPressure([BaroPressure_mbara], [CIT_degC])),
+
+    AddFC = Table.AddColumn(AddBP, "_fc",
+
+        each fnCF_FuelComp([FuelLHV_kJkg], [HC_ratio])),
+
+    // ── 6. Expand all record columns into named CF columns ───────────────────
+
+    Exp1 = Table.ExpandRecordColumn(AddFC, "_cit",
+
+        {"CF1_ExhaustPressure_mmH2O", "CF2_OutputRatio", "CF3_HeatRateRatio",
+
+         "CF4_ExhaustFlowRatio", "CF5_ExhaustTempDiff_degC"}),
+
+    Exp2 = Table.ExpandRecordColumn(Exp1, "_rh",
+
+        {"CF6_OutputRatio", "CF7_HeatRateRatio", "CF8_ExhaustFlowRatio",
+
+         "CF9_ExhaustTempDiff_degC"}),
+
+    Exp3 = Table.ExpandRecordColumn(Exp2, "_ss",
+
+        {"CF10_OutputRatio", "CF11_HeatRateRatio", "CF12_ExhaustFlowRatio",
+
+         "CF13_ExhaustTempDiff_degC"}),
+
+    Exp4 = Table.ExpandRecordColumn(Exp3, "_ft",
+
+        {"CF14_OutputRatio", "CF15_HeatRateRatio"}),
+
+    Exp5 = Table.ExpandRecordColumn(Exp4, "_in",
+
+        {"CF16_OutputRatio", "CF17_HeatRateRatio", "CF18_ExhaustFlowRatio",
+
+         "CF19_ExhaustTempDiff_degC"}),
+
+    Exp6 = Table.ExpandRecordColumn(Exp5, "_ep",
+
+        {"CF20_OutputRatio", "CF21_HeatRateRatio", "CF22_ExhaustTempDiff_degC"}),
+
+    Exp7 = Table.ExpandRecordColumn(Exp6, "_ed",
+
+        {"CF23_OutputRatio", "CF24_HeatRateRatio", "CF25_ExhaustTempDiff_degC"}),
+
+    Exp8 = Table.ExpandRecordColumn(Exp7, "_bp",
+
+        {"CF26_OutputRatio", "CF27_HeatRateRatio", "CF28_ExhaustFlowRatio",
+
+         "CF29_ExhaustTempDiff_degC"}),
+
+    Exp9 = Table.ExpandRecordColumn(Exp8, "_fc",
+
+        {"CF30_OutputRatio", "CF31_HeatRateRatio", "CF32_ExhaustFlowRatio",
+
+         "CF33_ExhaustTempDiff_degC"}),
+
+    // ── 7. Compute combined correction factor products ────────────────────────
+
+    AddCombinedOutputCF = Table.AddColumn(Exp9, "Combined_OutputCF",
+
+        each [CF2_OutputRatio]  * [CF6_OutputRatio]  * [CF10_OutputRatio]
+
+           * [CF14_OutputRatio] * [CF16_OutputRatio] * [CF20_OutputRatio]
+
+           * [CF23_OutputRatio] * [CF26_OutputRatio] * [CF30_OutputRatio]),
+
+    AddCombinedHRCF = Table.AddColumn(AddCombinedOutputCF, "Combined_HRCF",
+
+        each [CF3_HeatRateRatio]  * [CF7_HeatRateRatio]  * [CF11_HeatRateRatio]
+
+           * [CF15_HeatRateRatio] * [CF17_HeatRateRatio] * [CF21_HeatRateRatio]
+
+           * [CF24_HeatRateRatio] * [CF27_HeatRateRatio] * [CF31_HeatRateRatio]),
+
+    AddCorrectedOutput = Table.AddColumn(AddCombinedHRCF, "CorrectedOutput_MW",
+
+        each [MeasuredOutput_MW] / [Combined_OutputCF]),
+
+    AddCorrectedHR = Table.AddColumn(AddCorrectedOutput, "CorrectedHeatRate",
+
+        each [MeasuredHeatRate] / [Combined_HRCF]),
+
+    // Excel method corrected heat rate: apply same Combined_HRCF to Excel-method measured HR
+    AddCorrectedHR_Excel = Table.AddColumn(AddCorrectedHR, "CorrectedHeatRate_BTU_kWh",
+        each if [GTHeatRate_BTU_kWh] = null or [Combined_HRCF] = null or [Combined_HRCF] = 0
+             then null
+             else [GTHeatRate_BTU_kWh] / [Combined_HRCF],
+        type number),
+
+    // ── BTU/kWh conversions (1 kJ/kWh × 0.947817 = 1 BTU/kWh) ─────────────
+    AddMeasuredHR_BTU = Table.AddColumn(AddCorrectedHR_Excel, "MeasuredHeatRate_BTU",
+        each if [MeasuredHeatRate] = null then null
+             else [MeasuredHeatRate] * 0.947817,
+        type number),
+
+    AddCorrectedHR_BTU = Table.AddColumn(AddMeasuredHR_BTU, "CorrectedHeatRate_BTU",
+        each if [CorrectedHeatRate] = null then null
+             else [CorrectedHeatRate] * 0.947817,
+        type number),
+
+    // ── Exhaust Flow combined CF (CF4 x CF8 x CF12 x CF18 x CF28 x CF32) ──────
+    AddCombinedExhFlowCF = Table.AddColumn(AddCorrectedHR_BTU, "Combined_ExhFlowCF",
+        each [CF4_ExhaustFlowRatio] * [CF8_ExhaustFlowRatio]  * [CF12_ExhaustFlowRatio]
+           * [CF18_ExhaustFlowRatio] * [CF28_ExhaustFlowRatio] * [CF32_ExhaustFlowRatio]),
+
+    // ── Corrected Exhaust Temperature ───────────────────────────────────────
+    // Formula: Measured Exhaust Temp - (CF5+CF9+CF13+CF19+CF22+CF25+CF29+CF33)
+    AddCorrectedExhTemp = Table.AddColumn(AddCombinedExhFlowCF, "CorrectedExhaustTemp",
+        each let T = [MeasuredExhaustTemp]
+             in if T = null then null
+                else T - ( [CF5_ExhaustTempDiff_degC]  + [CF9_ExhaustTempDiff_degC]
+                         + [CF13_ExhaustTempDiff_degC] + [CF19_ExhaustTempDiff_degC]
+                         + [CF22_ExhaustTempDiff_degC] + [CF25_ExhaustTempDiff_degC]
+                         + [CF29_ExhaustTempDiff_degC] + [CF33_ExhaustTempDiff_degC] ),
+        type number),
+
+    // ── Corrected Exhaust Flow ─────────────────────────────────────────────
+    // Formula: Measured Exhaust Flow / (CF4 x CF8 x CF12 x CF18 x CF28 x CF32)
+    AddCorrectedExhFlow = Table.AddColumn(AddCorrectedExhTemp, "CorrectedExhaustFlow",
+        each let EF = [MeasuredExhaustFlow], CFprod = [Combined_ExhFlowCF]
+             in if EF = null or CFprod = null or CFprod = 0 then null
+                else EF / CFprod,
+        type number),
+
+    // ── Corrected Efficiency ────────────────────────────────────────────────
+    // Formula: 3600 / CorrectedHeatRate  (kJ/kWh -> dimensionless fraction)
+    // CorrectedHeatRate is in kJ/kWh, so Corrected Efficiency = 3600 / HR
+    AddCorrectedEfficiency = Table.AddColumn(AddCorrectedExhFlow, "CorrectedEfficiency", each let HR = [CorrectedHeatRate_BTU_kWh]
+             in if HR = null or HR <= 0 then null
+                else 3412.1416 / HR),
+
+    // ── Dynamic calculation methodology strings ───────────────────────────────
+
+    AddOutputFormula = Table.AddColumn(AddCorrectedEfficiency, "Calc_CorrectedOutput_MW",
+
+        each let
+
+                n = (x as nullable number) => if x = null then "null" else Number.ToText(Number.Round(x, 4)),
+
+                MW = n([GT1B_Gen_MW])
+
+             in
+
+                MW & " MW"
+
+                & " ÷ CF_CIT("  & n([CF2_OutputRatio])  & ")"
+
+                & " ÷ CF_RH("   & n([CF6_OutputRatio])   & ")"
+
+                & " ÷ CF_SS("   & n([CF10_OutputRatio])  & ")"
+
+                & " ÷ CF_FT("   & n([CF14_OutputRatio])  & ")"
+
+                & " ÷ CF_InDP(" & n([CF16_OutputRatio])  & ")"
+
+                & " ÷ CF_ExhP(" & n([CF20_OutputRatio])  & ")"
+
+                & " ÷ CF_ExhDP("& n([CF23_OutputRatio])  & ")"
+
+                & " ÷ CF_Baro(" & n([CF26_OutputRatio])  & ")"
+
+                & " ÷ CF_Fuel(" & n([CF30_OutputRatio])  & ")"
+
+                & " = " & n([CorrectedOutput_MW]) & " MW",
+
+        type text),
+
+
+    // ── 8. Add Operational Parameters ─────────────────────────────────────────
+    // Evaporative Cooler Effectiveness (Calculated WB)
+
+    // Excel-method HR formula string — shows volumetric conversion chain and result
+    // Corrected Heat Rate (BTU/kWh) formula string — same CF chain applied to GTHeatRate_BTU_kWh
+    AddHRFormula_BTU = Table.AddColumn(AddOutputFormula, "Calc_CorrectedHeatRate_BTU_kWh",
+
+        each let
+
+                n  = (x as nullable number) => if x = null then "null" else Number.ToText(Number.Round(x, 4)),
+
+                HR = n([GTHeatRate_BTU_kWh])
+
+             in
+
+                HR
+
+                & " ÷ CF_CIT("  & n([CF3_HeatRateRatio])  & ")"
+
+                & " ÷ CF_RH("   & n([CF7_HeatRateRatio])   & ")"
+
+                & " ÷ CF_SS("   & n([CF11_HeatRateRatio])  & ")"
+
+                & " ÷ CF_FT("   & n([CF15_HeatRateRatio])  & ")"
+
+                & " ÷ CF_InDP(" & n([CF17_HeatRateRatio])  & ")"
+
+                & " ÷ CF_ExhP(" & n([CF21_HeatRateRatio])  & ")"
+
+                & " ÷ CF_ExhDP("& n([CF24_HeatRateRatio])  & ")"
+
+                & " ÷ CF_Baro(" & n([CF27_HeatRateRatio])  & ")"
+
+                & " ÷ CF_Fuel(" & n([CF31_HeatRateRatio])  & ")"
+
+                & " = " & n([CorrectedHeatRate_BTU_kWh]) & " BTU/kWh",
+
+        type text),
+
+    AddExcelHRFormula = Table.AddColumn(AddHRFormula_BTU, "Calc_GTHeatRate_BTU_kWh",
+
+        each let
+
+                n  = (x as nullable number) => if x = null then "null" else Number.ToText(Number.Round(x, 4)),
+
+                FF = [GT1B_Fuel_Flow],
+
+                HHV = [HHV_BTU_SCF],
+
+                MW = [GT1B_Gen_MW]
+
+             in
+
+                "FF(" & n(FF) & " kg/s)"
+
+                & " ×3600÷0.9987×35.31467 = " & n(if FF=null then null else FF*3600/0.9987*35.31467) & " SCF/hr"
+
+                & " × GCV(" & n(HHV) & " BTU/SCF)"
+
+                & " ÷ 1.109(HHV→LHV)"
+
+                & " ÷ (" & n(MW) & " MW × 1000)"
+
+                & " = " & n([GTHeatRate_BTU_kWh]) & " BTU/kWh",
+
+        type text),
+
+    AddEvapEffCalcWB = Table.AddColumn(AddExcelHRFormula, "EvapCooler_Eff_Calc_WB",
+
+        each let T_DB=[Ambient_Temp_DB], T_WB=[Calculated_WB_Temp], T_CIT=[GT1B_Comp_Inlet_Temp],
+
+                 D=T_DB-T_WB, N=T_DB-T_CIT
+
+             in if D=null or N=null then null else if D=0 then null else if D<0 then null else N/D,
+
+        type number),
+
+    // Evaporative Cooler Effectiveness (H2 Building WB)
+
+    AddEvapEffH2WB = Table.AddColumn(AddEvapEffCalcWB, "EvapCooler_Eff_H2_Bldg_WB",
+
+        each let T_DB=[Ambient_Temp_DB], T_WB=[H2_Bldg_WB_Temp], T_CIT=[GT1B_Comp_Inlet_Temp],
+
+                 D=T_DB-T_WB, N=T_DB-T_CIT
+
+             in if D=null or N=null then null else if D=0 then null else if D<0 then null else N/D,
+
+        type number),
+
+    // Cooler Status
+
+    AddCoolerStatus = Table.AddColumn(AddEvapEffH2WB, "Cooler_Status",
+
+        each let eff=[EvapCooler_Eff_Calc_WB] in
+
+                  if eff=null  then "No Data"
+
+             else if eff<0     then "Review CIT > DBT"
+
+             else if eff>1     then "Subcooling"
+
+             else if eff<0.05  then "OFF"
+
+             else                   "ON",
+
+        type text),
+
+    // MMBTU/hr calculation
+
+    AddMMBTU = Table.AddColumn(AddCoolerStatus, "MMBTU_hr",
+
+        each let FF=[FuelFlow_kg_s], LHV=[LHV_Btu_lbm]
+
+             in if FF=null or LHV=null then null
+
+                else FF * 2.20462 * LHV * 3600 / 1000000,
+
+        type number),
+
+    // ── 8b. Compressor Pressure Ratio & Isentropic Efficiency ─────────────────
+    // PR   = Comp_Disch_Press (bar) / (Ambient_Press (mbar) ÷ 1000)
+    // η_c  = (PR^0.2857 - 1) / (T2/T1 - 1)
+    //        where 0.2857 = (γ-1)/γ, γ=1.4 (dry air)
+    //        T1 = CIT + 273.15 (K),  T2 = Comp_Disch_Temp + 273.15 (K)
+    AddCompPR = Table.AddColumn(AddMMBTU, "Compressor_PR",
+        each
+            let
+                P2_bar  = [GT1B_Comp_Disch_Press],
+                P1_bar  = [Ambient_Press] / 1000    // mbar → bar
+            in
+                if P2_bar = null or P1_bar = null or P1_bar = 0 then null
+                else P2_bar / P1_bar,
+        type number),
+
+    AddCompEff = Table.AddColumn(AddCompPR, "Compressor_Efficiency",
+        each
+            let
+                T1_K  = if [GT1B_Comp_Inlet_Temp] = null then null else [GT1B_Comp_Inlet_Temp] + 273.15,
+                T2_K  = if [GT1B_Comp_Disch_Temp] = null then null else [GT1B_Comp_Disch_Temp] + 273.15,
+                PR    = [Compressor_PR],
+                T_ratio = if T1_K = null or T2_K = null or T1_K = 0 then null
+                          else T2_K / T1_K,
+                PR_term = if PR = null or PR <= 0 then null
+                          else Number.Power(PR, 0.2857) - 1
+            in
+                if PR_term = null or T_ratio = null or (T_ratio - 1) = 0 then null
+                else PR_term / (T_ratio - 1),
+        type number),
+
+    // ── 9. Reorder: key results first, then individual CFs for audit ─────────
+
+    Reordered = Table.ReorderColumns(AddCompEff, {
+
+        "Date Only", "Hour", "Time Stamp", "GT_Unit",
+
+        "GT1B_Gen_MW", "FuelFlow_kg_s", "MMBTU_hr",
+
+        "MeasuredOutput_MW",  "CorrectedOutput_MW",
+
+        "MeasuredHeatRate",   "CorrectedHeatRate",
+
+        "GTHeatRate_BTU_kWh", "CorrectedHeatRate_BTU_kWh",
+
+        "CorrectedExhaustTemp", "CorrectedExhaustFlow",
+
+        "CorrectedEfficiency",
+
+        "Combined_OutputCF",  "Combined_HRCF",  "Combined_ExhFlowCF",
+
+        "MeasuredExhaustTemp", "MeasuredExhaustFlow",
+
+        "GT1B_Comp_Inlet_Temp", "GT1B_Turb_Exh_Temp",
+
+        "GT1B_Comp_Disch_Temp", "GT1B_Comp_Disch_Press",
+
+        "Compressor_PR", "Compressor_Efficiency",
+
+        "GT1B_IGV_Position",
+
+        "Calculated_WB_Temp", "H2_Bldg_WB_Temp",
+
+        "EvapCooler_Eff_Calc_WB", "EvapCooler_Eff_H2_Bldg_WB",
+
+        "Cooler_Status",
+
+        "GT1B_OFWW",
+
+        "Ambient_Temp_DB", "Rel_Humidity", "Ambient_Press",
+
+        "CIT_degC", "RH_pct", "RH_at_CIT", "ShaftSpeedRatio", "GT1B_Turbine_Speed", "FuelTemp_degC",
+
+        "GT1B_Diff_Press", "InletDP_mmH2O", "DeltaExhDP_mmH2O", "ExhaustDP_mmH2O",
+
+        "BaroPressure_mbara", "FuelLHV_kJkg", "HC_ratio",
+
+        "LHV_Btu_lbm", "HHV_BTU_SCF",
+
+        "CF1_ExhaustPressure_mmH2O",
+
+        "CF2_OutputRatio",   "CF3_HeatRateRatio",
+
+        "CF4_ExhaustFlowRatio", "CF5_ExhaustTempDiff_degC",
+
+        "CF6_OutputRatio",   "CF7_HeatRateRatio",
+
+        "CF8_ExhaustFlowRatio", "CF9_ExhaustTempDiff_degC",
+
+        "CF10_OutputRatio",  "CF11_HeatRateRatio",
+
+        "CF12_ExhaustFlowRatio", "CF13_ExhaustTempDiff_degC",
+
+        "CF14_OutputRatio",  "CF15_HeatRateRatio",
+
+        "CF16_OutputRatio",  "CF17_HeatRateRatio",
+
+        "CF18_ExhaustFlowRatio", "CF19_ExhaustTempDiff_degC",
+
+        "CF20_OutputRatio",  "CF21_HeatRateRatio",
+
+        "CF22_ExhaustTempDiff_degC",
+
+        "CF23_OutputRatio",  "CF24_HeatRateRatio",
+
+        "CF25_ExhaustTempDiff_degC",
+
+        "CF26_OutputRatio",  "CF27_HeatRateRatio",
+
+        "CF28_ExhaustFlowRatio", "CF29_ExhaustTempDiff_degC",
+
+        "CF30_OutputRatio",  "CF31_HeatRateRatio",
+
+        "CF32_ExhaustFlowRatio", "CF33_ExhaustTempDiff_degC",
+
+        "Calc_CorrectedOutput_MW", "Calc_GTHeatRate_BTU_kWh", "Calc_CorrectedHeatRate_BTU_kWh"
+
+    }),
+    #"Changed Type" = Table.TransformColumnTypes(Reordered,{{"CorrectedEfficiency", Percentage.Type}, {"Compressor_Efficiency", Percentage.Type}}),
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // MW IMPACT PER CORRECTION FACTOR
+    // Formula : GenMW × (1/CF_OutputRatio − 1)
+    //   CF > 1  →  negative (correction reduces output)
+    //   CF < 1  →  positive (correction increases output)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    Add_MW_CIT = Table.AddColumn(#"Changed Type", "MW_CIT",
+        each let cf = [CF2_OutputRatio],  mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_RH = Table.AddColumn(Add_MW_CIT, "MW_RH",
+        each let cf = [CF6_OutputRatio],  mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_SS = Table.AddColumn(Add_MW_RH, "MW_SS",
+        each let cf = [CF10_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_FuelTemp = Table.AddColumn(Add_MW_SS, "MW_FuelTemp",
+        each let cf = [CF14_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_InletDP = Table.AddColumn(Add_MW_FuelTemp, "MW_InletDP",
+        each let cf = [CF16_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_ExhPress = Table.AddColumn(Add_MW_InletDP, "MW_ExhPress",
+        each let cf = [CF20_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_ExhDP = Table.AddColumn(Add_MW_ExhPress, "MW_ExhDP",
+        each let cf = [CF23_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_BaroPress = Table.AddColumn(Add_MW_ExhDP, "MW_BaroPress",
+        each let cf = [CF26_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    Add_MW_FuelComp = Table.AddColumn(Add_MW_BaroPress, "MW_FuelComp",
+        each let cf = [CF30_OutputRatio], mw = [GT1B_Gen_MW]
+             in if cf = null or cf = 0 or mw = null then null
+                else mw * (1/cf - 1),
+        type number),
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // HR IMPACT PER CORRECTION FACTOR  (BTU/kWh)
+    // Formula : GTHeatRate_BTU_kWh × (1/CF_HRRatio − 1)
+    //   CF > 1  →  positive (correction increases heat rate = penalty)
+    //   CF < 1  →  negative (correction decreases heat rate = benefit)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    Add_HR_CIT = Table.AddColumn(Add_MW_FuelComp, "HR_CIT",
+        each let cf = [CF3_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_RH = Table.AddColumn(Add_HR_CIT, "HR_RH",
+        each let cf = [CF7_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_SS = Table.AddColumn(Add_HR_RH, "HR_SS",
+        each let cf = [CF11_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_FuelTemp = Table.AddColumn(Add_HR_SS, "HR_FuelTemp",
+        each let cf = [CF15_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_InletDP = Table.AddColumn(Add_HR_FuelTemp, "HR_InletDP",
+        each let cf = [CF17_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_ExhPress = Table.AddColumn(Add_HR_InletDP, "HR_ExhPress",
+        each let cf = [CF21_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_ExhDP = Table.AddColumn(Add_HR_ExhPress, "HR_ExhDP",
+        each let cf = [CF24_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_BaroPress = Table.AddColumn(Add_HR_ExhDP, "HR_BaroPress",
+        each let cf = [CF27_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number),
+
+    Add_HR_FuelComp = Table.AddColumn(Add_HR_BaroPress, "HR_FuelComp",
+        each let cf = [CF31_HeatRateRatio], hr = [GTHeatRate_BTU_kWh]
+             in if cf = null or cf = 0 or hr = null then null
+                else hr * (1/cf - 1),
+        type number)
+
+in
+
+    Add_HR_FuelComp

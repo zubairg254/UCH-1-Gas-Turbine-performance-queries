@@ -1,0 +1,57 @@
+// Power Query : fnInterp2D
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 2 OF 12:  fnInterp2D
+// Purpose: Bilinear interpolation helper (mirrors VBA Interp2D)
+// xList = CIT axis (rows), yList = parameter axis (cols), zGrid = list of lists
+// SETTING: Connection Only (helper function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(xList as list, yList as list, zGrid as list, 
+ xVal as number, yVal as number) as any =>
+let
+    mx   = List.Count(xList) - 1,
+    my   = List.Count(yList) - 1,
+    
+    // Range check
+    RangeOK = xVal >= xList{0} and xVal <= xList{mx} 
+              and yVal >= yList{0} and yVal <= yList{my},
+    
+    Result =
+        if not RangeOK then
+            error Error.Record("OutOfRange", 
+                "Input (" & Number.ToText(xVal) & ", " & 
+                Number.ToText(yVal) & ") is outside 2-D table bounds.")
+        else
+            let
+                // X bracketing index
+                xPositions = List.PositionOfAny(xList, 
+                    List.Select(xList, each _ <= xVal), 
+                    Occurrence.All),
+                ix = List.Min({List.Last(xPositions), mx - 1}),
+                
+                // Y bracketing index
+                yPositions = List.PositionOfAny(yList, 
+                    List.Select(yList, each _ <= yVal), 
+                    Occurrence.All),
+                iy = List.Min({List.Last(yPositions), my - 1}),
+                
+                // Interpolation weights
+                tx = (xVal - xList{ix}) / (xList{ix + 1} - xList{ix}),
+                ty = (yVal - yList{iy}) / (yList{iy + 1} - yList{iy}),
+                
+                // Four corner values  zGrid{xIndex}{yIndex}
+                z00 = zGrid{ix}{iy},
+                z10 = zGrid{ix + 1}{iy},
+                z01 = zGrid{ix}{iy + 1},
+                z11 = zGrid{ix + 1}{iy + 1},
+                
+                // Bilinear formula
+                CF  = z00*(1-tx)*(1-ty) + z10*tx*(1-ty) 
+                    + z01*(1-tx)*ty     + z11*tx*ty
+            in
+                CF
+in
+    Result

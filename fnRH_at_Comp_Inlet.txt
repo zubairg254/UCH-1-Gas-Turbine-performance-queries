@@ -1,0 +1,74 @@
+// Power Query : fnRH_at_Comp_Inlet
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// Power Query : fnRH_at_Comp_Inlet
+// Workbook    : UCH 1 2026 Heat Rate Analysis.xlsm
+// ────────────────────────────────────────────────────────────
+// Purpose      : Calculates Relative Humidity at Compressor Inlet after Evap Cooler.
+//                Translates the VBA function RH_at_Comp_Inlet() into Power Query M.
+//                Assumes isenthalpic process — humidity ratio W is conserved through
+//                the evap cooler; only temperature changes.
+// Inputs       : CIT_degC            — Compressor Inlet Temperature (°C)
+//                AmbientTemp_degC    — Ambient dry-bulb temperature before evap cooler (°C)
+//                RH_Ambient_pct      — Ambient relative humidity before evap cooler (%)
+//                Pressure_mbar       — Ambient barometric pressure (mbar)
+// Output       : RH at compressor inlet as a PERCENTAGE (0–100).
+//                Returns null on invalid inputs.
+// Baseline     : At baseline (evap cooler OFF, CIT = AmbientTemp), output = RH_Ambient_pct
+// Setting      : Connection Only
+// ────────────────────────────────────────────────────────────
+
+(CIT_degC as number, AmbientTemp_degC as number, RH_Ambient_pct as number, Pressure_mbar as number) as any =>
+
+let
+    // ── Guard: return null for any invalid inputs ─────────────────────────────
+    Result =
+        if CIT_degC         <= -273.15  then null
+        else if AmbientTemp_degC <= -273.15  then null
+        else if RH_Ambient_pct   <  0        then null
+        else if RH_Ambient_pct   >  100      then null
+        else if Pressure_mbar    <= 0        then null
+        else
+
+        let
+            // Convert pressure mbar → kPa  (1 mbar = 0.1 kPa)
+            P_kPa = Pressure_mbar / 10,
+
+            // ── Step 1: Saturation vapour pressure at ambient T1 (Tetens equation) ──
+            // P_sat [kPa] = 0.6108 × exp(17.27 × T / (T + 237.3))
+            P_sat_T1 = 0.6108 * Number.Exp((17.27 * AmbientTemp_degC) / (AmbientTemp_degC + 237.3)),
+
+            // ── Step 2: Actual vapour pressure at ambient conditions ──────────────
+            P_v1 = (RH_Ambient_pct / 100) * P_sat_T1,
+
+            // ── Step 3: Humidity ratio before evap cooler ─────────────────────────
+            // W = 0.622 × Pv / (P_total - Pv)   [kg water / kg dry air]
+            W1 = if (P_kPa - P_v1) <= 0 then null
+                 else 0.622 * (P_v1 / (P_kPa - P_v1)),
+
+            // ── Step 4: W conserved through evap cooler (isenthalpic) ─────────────
+            W2 = W1,
+
+            // ── Step 5: Saturation vapour pressure at CIT (T2) ───────────────────
+            P_sat_T2 = 0.6108 * Number.Exp((17.27 * CIT_degC) / (CIT_degC + 237.3)),
+
+            // ── Step 6: Actual vapour pressure at CIT ────────────────────────────
+            // Reverse of Step 3: Pv = W × P_total / (0.622 + W)
+            P_v2 = if W2 = null then null
+                   else (W2 * P_kPa) / (0.622 + W2),
+
+            // ── Step 7: RH at compressor inlet ───────────────────────────────────
+            RH2_raw = if P_v2 = null or P_sat_T2 = null or P_sat_T2 <= 0 then null
+                      else (P_v2 / P_sat_T2) * 100,
+
+            // Clamp to [0, 100]
+            RH2 = if RH2_raw = null then null
+                  else if RH2_raw < 0   then 0
+                  else if RH2_raw > 100 then 100
+                  else RH2_raw
+        in
+            RH2
+
+in
+    Result

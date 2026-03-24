@@ -1,0 +1,22 @@
+// Power Query : fnCF_ExhaustDP
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// QUERY 10 OF 12:  fnCF_ExhaustDP
+// CFs #23–25  |  Input: ExhaustDP_mmH2O (absolute duct DP, baseline = 337.82)
+// SETTING: Connection Only (CF function)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+(ExhaustDP_mmH2O as number) as record =>
+let
+    xDP   = {210.82, 337.82, 464.82},
+    yOut  = {1.00577, 1.0,    0.99413},
+    yHR   = {0.99426, 1.0,    1.0059},
+    yTmpD = {-1.49,   0.0,    1.52}
+in
+    [
+        CF23_OutputRatio          = fnInterp1D(xDP, yOut,  ExhaustDP_mmH2O),
+        CF24_HeatRateRatio        = fnInterp1D(xDP, yHR,   ExhaustDP_mmH2O),
+        CF25_ExhaustTempDiff_degC = fnInterp1D(xDP, yTmpD, ExhaustDP_mmH2O)
+    ]

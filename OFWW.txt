@@ -1,0 +1,12 @@
+// Power Query : OFWW
+// Workbook    : UCH 1 Heat Rate Analysis Specific Date Only.xlsm
+// ────────────────────────────────────────────────────────────
+
+let
+    Source = Excel.CurrentWorkbook(),
+    OFWW1 = Source{[Name="OFWW"]}[Content],
+    #"Changed Type" = Table.TransformColumnTypes(OFWW1,{{"Date ", type date}, {"GT-A ", type text}, {"GT-B", type any}, {"GT-C", type any}}),
+    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"Date ", "Date"}}),
+    #"Changed Type1" = Table.TransformColumnTypes(#"Renamed Columns",{{"GT-B", type text}, {"GT-C", type text}})
+in
+    #"Changed Type1"
