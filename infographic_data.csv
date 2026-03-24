@@ -1,0 +1,228 @@
+Section,Category,Attribute,Value,Notes
+Document Info,Metadata,Title,Gas Turbine Corrected Output Calculation - Process Flow Diagram,
+Document Info,Metadata,Purpose,Visualize step-by-step transformation of measured output to corrected output,
+Document Info,Metadata,Version,1.0,
+Document Info,Metadata,Last Updated,2026-03-24,
+Document Info,Metadata,Created By,UCH 1 Heat Rate Analysis Team,
+
+Diagram Structure,Layout,Flow Direction,Vertical (Top to Bottom),
+Diagram Structure,Layout,Total CF Groups,9,
+Diagram Structure,Layout,Total Correction Factors,33,
+
+Example Data,Measured Output,GT1X_Gen_MW,150.5,MW
+Example Data,Corrected Output,CorrectedOutput_MW,148.2,MW
+Example Data,Combined CF,Combined_OutputCF,1.0156,
+Example Data,Total Impact,Net MW Impact,-3.18,MW
+
+CF Group 1,CIT,Group Name,Compressor Inlet Temperature,
+CF Group 1,CIT,Input Parameter,CIT_degC,
+CF Group 1,CIT,Example Value,25.3,°C
+CF Group 1,CIT,Baseline Value,15.0,°C
+CF Group 1,CIT,CF Number,CF2_OutputRatio,
+CF Group 1,CIT,Example CF Value,1.0234,
+CF Group 1,CIT,Example Impact,-3.45,MW
+CF Group 1,CIT,Typical Range Min,0.90,
+CF Group 1,CIT,Typical Range Max,1.30,
+CF Group 1,CIT,Impact Direction,Higher CIT → Higher CF → Lower Corrected Output,
+CF Group 1,CIT,Icon,Thermometer,
+
+CF Group 2,RH,Group Name,Relative Humidity,
+CF Group 2,RH,Input Parameter,RH_at_CIT,
+CF Group 2,RH,Example Value,65.2,%
+CF Group 2,RH,Baseline Value,48.5,%
+CF Group 2,RH,CF Number,CF6_OutputRatio,
+CF Group 2,RH,Example CF Value,0.9987,
+CF Group 2,RH,Example Impact,+0.20,MW
+CF Group 2,RH,Typical Range Min,0.998,
+CF Group 2,RH,Typical Range Max,1.005,
+CF Group 2,RH,Impact Direction,Higher RH → Lower CF → Higher Corrected Output,
+CF Group 2,RH,Icon,Droplet,
+
+CF Group 3,Shaft Speed,Group Name,Shaft Speed,
+CF Group 3,Shaft Speed,Input Parameter,SpeedRatio,
+CF Group 3,Shaft Speed,Example Value,0.998,RPM/3000
+CF Group 3,Shaft Speed,Baseline Value,1.000,
+CF Group 3,Shaft Speed,CF Number,CF10_OutputRatio,
+CF Group 3,Shaft Speed,Example CF Value,0.9976,
+CF Group 3,Shaft Speed,Example Impact,+0.36,MW
+CF Group 3,Shaft Speed,Typical Range Min,0.980,
+CF Group 3,Shaft Speed,Typical Range Max,1.020,
+CF Group 3,Shaft Speed,Impact Direction,Lower Speed → Lower CF → Higher Corrected Output,
+CF Group 3,Shaft Speed,Icon,Gear,
+
+CF Group 4,Fuel Temp,Group Name,Fuel Temperature,
+CF Group 4,Fuel Temp,Input Parameter,FuelTemp_degC,
+CF Group 4,Fuel Temp,Example Value,22.5,°C
+CF Group 4,Fuel Temp,Baseline Value,26.7,°C
+CF Group 4,Fuel Temp,CF Number,CF14_OutputRatio,
+CF Group 4,Fuel Temp,Example CF Value,1.0002,
+CF Group 4,Fuel Temp,Example Impact,-0.03,MW
+CF Group 4,Fuel Temp,Typical Range Min,0.9997,
+CF Group 4,Fuel Temp,Typical Range Max,1.0003,
+CF Group 4,Fuel Temp,Impact Direction,Lower Fuel Temp → Higher CF → Lower Corrected Output,
+CF Group 4,Fuel Temp,Icon,Thermometer,
+
+CF Group 5,Inlet DP,Group Name,Inlet Pressure Loss,
+CF Group 5,Inlet DP,Input Parameter,InletDP_mmH2O,
+CF Group 5,Inlet DP,Example Value,140.5,mm H₂O
+CF Group 5,Inlet DP,Baseline Value,127.0,mm H₂O
+CF Group 5,Inlet DP,CF Number,CF16_OutputRatio,
+CF Group 5,Inlet DP,Example CF Value,0.9982,
+CF Group 5,Inlet DP,Example Impact,+0.27,MW
+CF Group 5,Inlet DP,Typical Range Min,0.994,
+CF Group 5,Inlet DP,Typical Range Max,1.006,
+CF Group 5,Inlet DP,Impact Direction,Higher DP → Lower CF → Higher Corrected Output,
+CF Group 5,Inlet DP,Icon,Gauge,
+
+CF Group 6,Exhaust Press,Group Name,Exhaust Back-Pressure,
+CF Group 6,Exhaust Press,Input Parameter,DeltaExhDP_mmH2O,
+CF Group 6,Exhaust Press,Example Value,0.0,mm H₂O
+CF Group 6,Exhaust Press,Baseline Value,0.0,mm H₂O
+CF Group 6,Exhaust Press,CF Number,CF20_OutputRatio,
+CF Group 6,Exhaust Press,Example CF Value,1.0000,
+CF Group 6,Exhaust Press,Example Impact,0.00,MW
+CF Group 6,Exhaust Press,Typical Range Min,0.993,
+CF Group 6,Exhaust Press,Typical Range Max,1.007,
+CF Group 6,Exhaust Press,Impact Direction,Higher Back-Pressure → Lower CF → Higher Corrected Output,
+CF Group 6,Exhaust Press,Icon,Gauge,
+
+CF Group 7,Exhaust DP,Group Name,HRSG Duct Pressure,
+CF Group 7,Exhaust DP,Input Parameter,ExhaustDP_mmH2O,
+CF Group 7,Exhaust DP,Example Value,266.7,mm H₂O
+CF Group 7,Exhaust DP,Baseline Value,337.82,mm H₂O
+CF Group 7,Exhaust DP,CF Number,CF23_OutputRatio,
+CF Group 7,Exhaust DP,Example CF Value,1.0026,
+CF Group 7,Exhaust DP,Example Impact,-0.39,MW
+CF Group 7,Exhaust DP,Typical Range Min,0.994,
+CF Group 7,Exhaust DP,Typical Range Max,1.006,
+CF Group 7,Exhaust DP,Impact Direction,Lower DP → Higher CF → Lower Corrected Output,
+CF Group 7,Exhaust DP,Icon,Gauge,
+
+CF Group 8,Baro Press,Group Name,Barometric Pressure,
+CF Group 8,Baro Press,Input Parameter,BaroPressure_mbara,
+CF Group 8,Baro Press,Example Value,1012.5,mbar
+CF Group 8,Baro Press,Baseline Value,1005.91,mbar
+CF Group 8,Baro Press,CF Number,CF26_OutputRatio,
+CF Group 8,Baro Press,Example CF Value,1.0045,
+CF Group 8,Baro Press,Example Impact,-0.67,MW
+CF Group 8,Baro Press,Typical Range Min,0.965,
+CF Group 8,Baro Press,Typical Range Max,1.032,
+CF Group 8,Baro Press,Impact Direction,Higher Baro → Higher CF → Lower Corrected Output,
+CF Group 8,Baro Press,Icon,Gauge,
+
+CF Group 9,Fuel Comp,Group Name,Fuel Composition,
+CF Group 9,Fuel Comp,Input Parameter 1,FuelLHV_kJkg,
+CF Group 9,Fuel Comp,Input Parameter 2,HC_ratio,
+CF Group 9,Fuel Comp,Example Value 1,12450,kJ/kg
+CF Group 9,Fuel Comp,Example Value 2,3.92,
+CF Group 9,Fuel Comp,Baseline Value 1,12552,kJ/kg
+CF Group 9,Fuel Comp,Baseline Value 2,3.86,
+CF Group 9,Fuel Comp,CF Number,CF30_OutputRatio,
+CF Group 9,Fuel Comp,Example CF Value,0.9965,
+CF Group 9,Fuel Comp,Example Impact,+0.53,MW
+CF Group 9,Fuel Comp,Typical Range Min,0.988,
+CF Group 9,Fuel Comp,Typical Range Max,1.015,
+CF Group 9,Fuel Comp,Impact Direction,Lower LHV → Lower CF → Higher Corrected Output,
+CF Group 9,Fuel Comp,Icon,Flame,
+
+Design Specs,Color Scheme,Measured Output Box Background,#E3F2FD,Light Blue
+Design Specs,Color Scheme,Measured Output Box Border,#1976D2,Dark Blue
+Design Specs,Color Scheme,Measured Output Box Text,#0D47A1,Dark Blue
+Design Specs,Color Scheme,CF Box Background (CF < 1.0),#E8F5E9,Light Green - Positive Impact
+Design Specs,Color Scheme,CF Box Background (CF > 1.0),#FFEBEE,Light Red - Negative Impact
+Design Specs,Color Scheme,CF Box Background (CF = 1.0),#F5F5F5,Light Gray - No Impact
+Design Specs,Color Scheme,CF Box Border,#757575,Medium Gray
+Design Specs,Color Scheme,CF Box Text,#000000,Black
+Design Specs,Color Scheme,Combined CF Box Background,#FFF9C4,Light Yellow
+Design Specs,Color Scheme,Combined CF Box Border,#F57C00,Orange
+Design Specs,Color Scheme,Combined CF Box Text,#E65100,Dark Orange
+Design Specs,Color Scheme,Corrected Output Box Background,#F3E5F5,Light Purple
+Design Specs,Color Scheme,Corrected Output Box Border,#7B1FA2,Dark Purple
+Design Specs,Color Scheme,Corrected Output Box Text,#4A148C,Dark Purple
+Design Specs,Color Scheme,Arrow Color,#424242,Dark Gray
+Design Specs,Color Scheme,Arrow Width,3px,
+Design Specs,Color Scheme,Arrow Style,Solid with arrowhead,
+
+Design Specs,Typography,Headers Font,Bold 14pt Sans-serif,Arial or Helvetica
+Design Specs,Typography,Parameter Names Font,Regular 11pt Sans-serif,
+Design Specs,Typography,Values Font,Bold 11pt Monospace,Courier New
+Design Specs,Typography,Impact Values Font,Bold Italic 10pt Sans-serif,
+Design Specs,Typography,Formulas Font,Regular 10pt Monospace,
+
+Design Specs,Box Dimensions,Standard Width,600px,Consistent across all boxes
+Design Specs,Box Dimensions,Measured Output Height,80px,
+Design Specs,Box Dimensions,CF Group Box Height,100px,Each
+Design Specs,Box Dimensions,Combined CF Box Height,180px,
+Design Specs,Box Dimensions,Corrected Output Height,100px,
+Design Specs,Box Dimensions,Vertical Spacing,20px,Gap between boxes
+Design Specs,Box Dimensions,Internal Padding,15px,
+Design Specs,Box Dimensions,Border Radius,8px,Rounded corners
+
+Formula,Combined CF,Formula,Combined_OutputCF = CF2 × CF6 × CF10 × CF14 × CF16 × CF20 × CF23 × CF26 × CF30,
+Formula,Combined CF,Mathematical Notation,∏(i=1 to 9) CFᵢ_OutputRatio,
+Formula,Corrected Output,Formula,CorrectedOutput_MW = MeasuredOutput_MW / Combined_OutputCF,
+Formula,Corrected Output,Example Calculation,150.5 MW / 1.0156 = 148.2 MW,
+
+Interpretation,CF > 1.0,Meaning,Corrected < Measured,
+Interpretation,CF > 1.0,Condition,Operating conditions better than baseline,
+Interpretation,CF < 1.0,Meaning,Corrected > Measured,
+Interpretation,CF < 1.0,Condition,Operating conditions worse than baseline,
+Interpretation,CF = 1.0,Meaning,Corrected = Measured,
+Interpretation,CF = 1.0,Condition,Operating at baseline conditions,
+
+Impact Summary,Positive,RH,+0.20,MW
+Impact Summary,Positive,Speed,+0.36,MW
+Impact Summary,Positive,Inlet DP,+0.27,MW
+Impact Summary,Positive,Fuel Comp,+0.53,MW
+Impact Summary,Positive,Subtotal,+1.36,MW
+Impact Summary,Negative,CIT,-3.45,MW
+Impact Summary,Negative,Fuel Temp,-0.03,MW
+Impact Summary,Negative,Exhaust DP,-0.39,MW
+Impact Summary,Negative,Baro Press,-0.67,MW
+Impact Summary,Negative,Subtotal,-4.54,MW
+Impact Summary,Net,Total Impact,-3.18,MW
+
+Software Tools,Recommended,Tool 1,Microsoft Visio,Professional flowchart tool
+Software Tools,Recommended,Tool 2,Lucidchart,Web-based diagramming
+Software Tools,Recommended,Tool 3,Draw.io (diagrams.net),Free open-source
+Software Tools,Recommended,Tool 4,PowerPoint,Using SmartArt and shapes
+Software Tools,Recommended,Tool 5,Adobe Illustrator,High-quality graphics
+Software Tools,Recommended,Tool 6,Mermaid,Code-based diagram generation
+
+Export Formats,File Types,PDF,300 DPI CMYK color,For documentation
+Export Formats,File Types,PNG,1920x1080px 96 DPI RGB,For presentations
+Export Formats,File Types,SVG,Scalable,For web/scalable graphics
+Export Formats,File Types,PPTX,Editable,For PowerPoint slides
+
+Export Formats,Dimensions,Portrait,8.5" × 14",Legal size
+Export Formats,Dimensions,Landscape,11" × 8.5",Letter size landscape
+Export Formats,Dimensions,Poster,24" × 36",Large format printing
+
+Usage Notes,Guidelines,Note 1,Update values with actual operational data,
+Usage Notes,Guidelines,Note 2,Highlight deviations using bold/color for CFs significantly different from 1.0,
+Usage Notes,Guidelines,Note 3,Add timestamps for measurement context,
+Usage Notes,Guidelines,Note 4,Clearly label GT identification (GT1A/GT1B/GT1C),
+Usage Notes,Guidelines,Note 5,Always show baseline conditions for comparison,
+Usage Notes,Guidelines,Note 6,Consider adding bar charts for impact comparison,
+
+Companion Diagrams,Additional,Diagram 1,Heat Rate Correction Flow,CFs: CF3 CF7 CF11 CF15 CF17 CF21 CF24 CF27 CF31
+Companion Diagrams,Additional,Diagram 2,Exhaust Flow Correction Flow,CFs: CF4 CF8 CF12 CF18 CF28 CF32
+Companion Diagrams,Additional,Diagram 3,Exhaust Temperature Correction Flow,CFs: CF5 CF9 CF13 CF19 CF22 CF25 CF29 CF33
+Companion Diagrams,Additional,Diagram 4,Parallel Comparison,Side-by-side comparison of GT1A GT1B GT1C
+
+Quality Checklist,Verification,Item 1,All 9 CF groups included,
+Quality Checklist,Verification,Item 2,Correct CF numbers referenced (CF2 CF6 CF10 CF14 CF16 CF20 CF23 CF26 CF30),
+Quality Checklist,Verification,Item 3,Baseline values shown for each parameter,
+Quality Checklist,Verification,Item 4,Impact values calculated and displayed,
+Quality Checklist,Verification,Item 5,Combined CF formula correct,
+Quality Checklist,Verification,Item 6,Final corrected output calculation shown,
+Quality Checklist,Verification,Item 7,Color coding consistent with legend,
+Quality Checklist,Verification,Item 8,Units clearly labeled,
+Quality Checklist,Verification,Item 9,Arrows flow logically top-to-bottom,
+Quality Checklist,Verification,Item 10,Text readable at intended display size,
+Quality Checklist,Verification,Item 11,Mathematical notation accurate,
+Quality Checklist,Verification,Item 12,Icons/symbols enhance understanding,
+
+Legend,Color Coding,Green Box,CF < 1.0 (Positive) → Increases corrected output,
+Legend,Color Coding,Red Box,CF > 1.0 (Negative) → Decreases corrected output,
+Legend,Color Coding,Gray Box,CF = 1.0 (Neutral) → No impact on corrected output,

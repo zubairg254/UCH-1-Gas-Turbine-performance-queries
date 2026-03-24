@@ -1,0 +1,182 @@
+<mxfile host="app.diagrams.net" modified="2026-03-24T00:00:00.000Z" agent="Kiro" version="21.0.0" etag="drawio-export" type="device">
+  <diagram id="GT-Correction-Flow" name="GT Corrected Output Flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Measured Output Box -->
+        <mxCell id="measured-output" value="&lt;b&gt;MEASURED OUTPUT (MW)&lt;/b&gt;&lt;br&gt;GT1X_Gen_MW = 150.5 MW&lt;br&gt;(Actual operating conditions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E3F2FD;strokeColor=#1976D2;strokeWidth=2;fontColor=#0D47A1;fontSize=14;align=center;verticalAlign=middle;arcSize=5;" vertex="1" parent="1">
+          <mxGeometry x="125" y="40" width="600" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 1 -->
+        <mxCell id="arrow1" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="measured-output" target="cf-header">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Header Box -->
+        <mxCell id="cf-header" value="&lt;b&gt;CORRECTION FACTOR CALCULATION&lt;/b&gt;&lt;br&gt;(9 Functional Groups)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F57C00;strokeWidth=2;fontColor=#E65100;fontSize=13;align=center;verticalAlign=middle;arcSize=5;" vertex="1" parent="1">
+          <mxGeometry x="125" y="150" width="600" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 2 -->
+        <mxCell id="arrow2" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf-header" target="cf1-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 1: CIT (Red - CF > 1.0) -->
+        <mxCell id="cf1-box" value="&lt;b&gt;🌡️ CF GROUP 1: COMPRESSOR INLET TEMP&lt;/b&gt;&lt;br&gt;Input: CIT_degC = 25.3°C&lt;br&gt;Baseline: 15.0°C&lt;br&gt;→ CF2_OutputRatio = 1.0234&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: -3.45 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="240" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 3 -->
+        <mxCell id="arrow3" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf1-box" target="cf2-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 2: RH (Green - CF < 1.0) -->
+        <mxCell id="cf2-box" value="&lt;b&gt;💧 CF GROUP 2: RELATIVE HUMIDITY&lt;/b&gt;&lt;br&gt;Input: RH_at_CIT = 65.2%&lt;br&gt;Baseline: 48.5%&lt;br&gt;→ CF6_OutputRatio = 0.9987&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: +0.20 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="360" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 4 -->
+        <mxCell id="arrow4" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf2-box" target="cf3-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 3: Shaft Speed (Green - CF < 1.0) -->
+        <mxCell id="cf3-box" value="&lt;b&gt;⚙️ CF GROUP 3: SHAFT SPEED&lt;/b&gt;&lt;br&gt;Input: SpeedRatio = 0.998&lt;br&gt;Baseline: 1.000&lt;br&gt;→ CF10_OutputRatio = 0.9976&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: +0.36 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="480" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 5 -->
+        <mxCell id="arrow5" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf3-box" target="cf4-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 4: Fuel Temp (Red - CF > 1.0) -->
+        <mxCell id="cf4-box" value="&lt;b&gt;🌡️ CF GROUP 4: FUEL TEMPERATURE&lt;/b&gt;&lt;br&gt;Input: FuelTemp_degC = 22.5°C&lt;br&gt;Baseline: 26.7°C&lt;br&gt;→ CF14_OutputRatio = 1.0002&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: -0.03 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="600" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 6 -->
+        <mxCell id="arrow6" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf4-box" target="cf5-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 5: Inlet DP (Green - CF < 1.0) -->
+        <mxCell id="cf5-box" value="&lt;b&gt;📊 CF GROUP 5: INLET PRESSURE LOSS&lt;/b&gt;&lt;br&gt;Input: InletDP_mmH2O = 140.5&lt;br&gt;Baseline: 127.0 mm H₂O&lt;br&gt;→ CF16_OutputRatio = 0.9982&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: +0.27 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="720" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 7 -->
+        <mxCell id="arrow7" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf5-box" target="cf6-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 6: Exhaust Pressure (Gray - CF = 1.0) -->
+        <mxCell id="cf6-box" value="&lt;b&gt;📊 CF GROUP 6: EXHAUST BACK-PRESSURE&lt;/b&gt;&lt;br&gt;Input: DeltaExhDP_mmH2O = 0.0&lt;br&gt;Baseline: 0.0 mm H₂O&lt;br&gt;→ CF20_OutputRatio = 1.0000&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: 0.00 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="840" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 8 -->
+        <mxCell id="arrow8" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf6-box" target="cf7-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 7: Exhaust DP (Red - CF > 1.0) -->
+        <mxCell id="cf7-box" value="&lt;b&gt;📊 CF GROUP 7: HRSG DUCT PRESSURE&lt;/b&gt;&lt;br&gt;Input: ExhaustDP_mmH2O = 266.7&lt;br&gt;Baseline: 337.82 mm H₂O&lt;br&gt;→ CF23_OutputRatio = 1.0026&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: -0.39 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="960" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 9 -->
+        <mxCell id="arrow9" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf7-box" target="cf8-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 8: Baro Pressure (Red - CF > 1.0) -->
+        <mxCell id="cf8-box" value="&lt;b&gt;📊 CF GROUP 8: BAROMETRIC PRESSURE&lt;/b&gt;&lt;br&gt;Input: BaroPressure_mbara = 1012.5&lt;br&gt;Baseline: 1005.91 mbar&lt;br&gt;→ CF26_OutputRatio = 1.0045&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: -0.67 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFEBEE;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1080" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 10 -->
+        <mxCell id="arrow10" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf8-box" target="cf9-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CF Group 9: Fuel Comp (Green - CF < 1.0) -->
+        <mxCell id="cf9-box" value="&lt;b&gt;🔥 CF GROUP 9: FUEL COMPOSITION&lt;/b&gt;&lt;br&gt;Input: FuelLHV_kJkg = 12,450, HC_ratio = 3.92&lt;br&gt;Baseline: 12,552 kJ/kg, H/C = 3.86&lt;br&gt;→ CF30_OutputRatio = 0.9965&lt;br&gt;&lt;i&gt;&lt;b&gt;Impact: +0.53 MW&lt;/b&gt;&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#757575;strokeWidth=2;fontColor=#000000;fontSize=11;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1200" width="600" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 11 -->
+        <mxCell id="arrow11" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="cf9-box" target="combined-cf-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Combined CF Calculation Box -->
+        <mxCell id="combined-cf-box" value="&lt;b&gt;🧮 COMBINED CORRECTION FACTOR CALCULATION&lt;/b&gt;&lt;br&gt;&lt;br&gt;Combined_OutputCF = CF2 × CF6 × CF10 × CF14 × CF16 × CF20 × CF23 × CF26 × CF30&lt;br&gt;&lt;br&gt;Combined_OutputCF = 1.0234 × 0.9987 × 0.9976 × 1.0002 × 0.9982 × 1.0000 × 1.0026 × 1.0045 × 0.9965&lt;br&gt;&lt;br&gt;&lt;b&gt;Combined_OutputCF = 1.0156&lt;/b&gt;&lt;br&gt;&lt;br&gt;Total Impact = -3.45 + 0.20 + 0.36 - 0.03 + 0.27 + 0.00 - 0.39 - 0.67 + 0.53 = &lt;b&gt;-3.18 MW&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9C4;strokeColor=#F57C00;strokeWidth=2;fontColor=#E65100;fontSize=10;align=left;verticalAlign=middle;arcSize=5;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1320" width="600" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow 12 -->
+        <mxCell id="arrow12" value="" style="endArrow=classic;html=1;strokeColor=#424242;strokeWidth=3;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="combined-cf-box" target="corrected-output-box">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="400" as="sourcePoint" />
+            <mxPoint x="450" y="350" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Corrected Output Box -->
+        <mxCell id="corrected-output-box" value="&lt;b&gt;🎯 CORRECTED OUTPUT CALCULATION&lt;/b&gt;&lt;br&gt;&lt;br&gt;CorrectedOutput_MW = MeasuredOutput_MW / Combined_OutputCF&lt;br&gt;&lt;br&gt;CorrectedOutput_MW = 150.5 MW / 1.0156&lt;br&gt;&lt;br&gt;&lt;b&gt;CorrectedOutput_MW = 148.2 MW&lt;/b&gt;&lt;br&gt;&lt;br&gt;(Output normalized to baseline conditions)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#7B1FA2;strokeWidth=2;fontColor=#4A148C;fontSize=11;align=center;verticalAlign=middle;arcSize=5;" vertex="1" parent="1">
+          <mxGeometry x="125" y="1520" width="600" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Legend Box (Side Panel) -->
+        <mxCell id="legend-box" value="&lt;b&gt;LEGEND&lt;/b&gt;&lt;br&gt;─────────────────&lt;br&gt;🟢 Green: CF &amp;lt; 1.0&lt;br&gt;   Positive Impact&lt;br&gt;   Increases corrected output&lt;br&gt;&lt;br&gt;🔴 Red: CF &amp;gt; 1.0&lt;br&gt;   Negative Impact&lt;br&gt;   Decreases corrected output&lt;br&gt;&lt;br&gt;⚪ Gray: CF = 1.0&lt;br&gt;   Neutral Impact&lt;br&gt;   No change" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#424242;strokeWidth=2;fontColor=#000000;fontSize=10;align=left;verticalAlign=top;arcSize=5;spacingLeft=10;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="760" y="40" width="200" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Impact Summary Box (Side Panel) -->
+        <mxCell id="impact-summary-box" value="&lt;b&gt;IMPACT SUMMARY&lt;/b&gt;&lt;br&gt;─────────────────&lt;br&gt;&lt;b&gt;Positive Impacts:&lt;/b&gt;&lt;br&gt;  RH:          +0.20 MW&lt;br&gt;  Speed:       +0.36 MW&lt;br&gt;  Inlet DP:    +0.27 MW&lt;br&gt;  Fuel Comp:   +0.53 MW&lt;br&gt;  ─────────────────&lt;br&gt;  Subtotal:    +1.36 MW&lt;br&gt;&lt;br&gt;&lt;b&gt;Negative Impacts:&lt;/b&gt;&lt;br&gt;  CIT:         -3.45 MW&lt;br&gt;  Fuel Temp:   -0.03 MW&lt;br&gt;  Exhaust DP:  -0.39 MW&lt;br&gt;  Baro Press:  -0.67 MW&lt;br&gt;  ─────────────────&lt;br&gt;  Subtotal:    -4.54 MW&lt;br&gt;&lt;br&gt;&lt;b&gt;NET IMPACT:    -3.18 MW&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFDE7;strokeColor=#F57C00;strokeWidth=2;fontColor=#000000;fontSize=9;align=left;verticalAlign=top;arcSize=5;spacingLeft=10;spacingTop=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="760" y="300" width="200" height="360" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
