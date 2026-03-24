@@ -5,9 +5,18 @@
 
 ## Executive Summary
 
-This document provides comprehensive documentation for the UCH 1 2026 Heat Rate Analysis Power Query system. The system consists of 17 interconnected queries that process gas turbine performance data, apply correction factors, and generate performance reports for three GE MS9001E (Frame 9E) gas turbines (GT1A, GT1B, GT1C) operating in a combined-cycle power plant.
+This document provides comprehensive documentation for the UCH 1 2026 Heat Rate Analysis Power Query system. The system consists of 20 interconnected queries that process gas turbine performance data, apply correction factors, and generate performance reports for three GE MS9001E (Frame 9E) gas turbines (GT1A, GT1B, GT1C) operating in a combined-cycle power plant.
 
-**System Purpose**: Calculate corrected performance metrics (output, heat rate, efficiency, exhaust parameters) by applying 33 individual correction factors to measured operational data.
+**System Purpose**: Calculate corrected performance metrics (output, heat rate, efficiency, exhaust parameters) by applying 33 individual correction factors to measured operational data, with detailed impact analysis per correction factor.
+
+**Key Features**:
+- Date-range filtering via Excel Named Ranges (StartDate, EndDate)
+- FCBL (Full Combined Base Load) condition filtering
+- Dual heat rate calculation methods (kJ/kWh and BTU/kWh)
+- RH correction at compressor inlet after evaporative cooler
+- MW and HR impact analysis for all 9 correction factor groups
+- OFWW (Offline Water Wash) schedule integration
+- Consolidated 3-GT summary with hourly totals
 
 ---
 
@@ -32,16 +41,18 @@ This document provides comprehensive documentation for the UCH 1 2026 Heat Rate 
 ┌─────────────────────────────────────────────────────────────────┐
 │                     DATA SOURCES LAYER                          │
 ├─────────────────────────────────────────────────────────────────┤
-│  • Base Data 2026 (Hourly operational data)                     │
-│  • Daily_fuel_gas_composition (LHV & H/C ratio)                 │
+│  • Base Data 2026 (Hourly operational data + OFWW join)         │
+│  • OFWW (Offline Water Wash schedule)                           │
+│  • Daily_fuel_gas_composition (LHV, H/C ratio & GCV)            │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │                  UTILITY FUNCTIONS LAYER                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  • fnInterp1D        (1D linear interpolation)                  │
-│  • fnInterp2D        (2D bilinear interpolation)                │
-│  • fnInterpFuelCurve (Fuel composition interpolation)           │
+│  • fnInterp1D            (1D linear interpolation)              │
+│  • fnInterp2D            (2D bilinear interpolation)            │
+│  • fnInterpFuelCurve     (Fuel composition interpolation)       │
+│  • fnRH_at_Comp_Inlet   (RH at compressor inlet after cooler)  │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -77,11 +88,11 @@ This document provides comprehensive documentation for the UCH 1 2026 Heat Rate 
 
 | Layer | Component Count | Purpose |
 |-------|----------------|---------|
-| Data Sources | 2 | Raw operational and fuel data |
-| Utility Functions | 3 | Mathematical interpolation helpers |
+| Data Sources | 3 | Raw operational data (Base Data 2026), fuel composition (Daily_fuel_gas_composition), and OFWW schedule |
+| Utility Functions | 4 | Mathematical interpolation helpers (fnInterp1D, fnInterp2D, fnInterpFuelCurve) + RH at compressor inlet (fnRH_at_Comp_Inlet) |
 | Correction Factors | 9 | Apply 33 individual CFs to measurements |
-| Performance Queries | 3 | Calculate corrected metrics per GT |
-| Reporting | 1 | Consolidated multi-GT summary |
+| Performance Queries | 3 | Calculate corrected metrics per GT + MW/HR impact analysis |
+| Reporting | 1 | Consolidated multi-GT summary with totals + MW/HR impacts |
 
 ---
 
@@ -92,23 +103,26 @@ This document provides comprehensive documentation for the UCH 1 2026 Heat Rate 
 
 | # | Query Name | Type | Setting | Purpose |
 |---|------------|------|---------|---------|
-| 1 | **Base Data 2026** | Data Source | Connection Only | Loads and filters hourly operational data (FCBL only) |
-| 2 | **fnInterp1D** | Utility Function | Connection Only | 1D linear interpolation helper |
-| 3 | **fnInterp2D** | Utility Function | Connection Only | 2D bilinear interpolation helper |
-| 4 | **fnInterpFuelCurve** | Utility Function | Connection Only | Fuel composition curve interpolation |
-| 5 | **fnCF_CIT** | CF Function | Connection Only | Compressor Inlet Temperature CFs (#1-5) |
-| 6 | **fnCF_RH** | CF Function | Connection Only | Relative Humidity CFs (#6-9) |
-| 7 | **fnCF_ShaftSpeed** | CF Function | Connection Only | Shaft Speed Ratio CFs (#10-13) |
-| 8 | **fnCF_FuelTemp** | CF Function | Connection Only | Fuel Temperature CFs (#14-15) |
-| 9 | **fnCF_InletDP** | CF Function | Connection Only | Inlet Differential Pressure CFs (#16-19) |
-| 10 | **fnCF_ExhaustPressure** | CF Function | Connection Only | Exhaust Back-Pressure CFs (#20-22) |
-| 11 | **fnCF_ExhaustDP** | CF Function | Connection Only | HRSG Duct Pressure CFs (#23-25) |
-| 12 | **fnCF_BaroPressure** | CF Function | Connection Only | Barometric Pressure CFs (#26-29) |
-| 13 | **fnCF_FuelComp** | CF Function | Connection Only | Fuel Composition CFs (#30-33) |
-| 14 | **GT1A_Performance** | Performance Query | Load to Worksheet | GT1A corrected performance metrics |
-| 15 | **GT1B_Performance** | Performance Query | Load to Worksheet | GT1B corrected performance metrics |
-| 16 | **GT1C_Performance** | Performance Query | Load to Worksheet | GT1C corrected performance metrics |
-| 17 | **GT_Combined_Summary** | Report Query | Load to Worksheet | Consolidated 3-GT summary with totals |
+| 1 | **Base Data 2026** | Data Source | Connection Only | Loads and filters hourly operational data (FCBL only), joins OFWW, date-range filtered |
+| 2 | **OFWW** | Data Source | Connection Only | Loads Offline Water Wash schedule per GT |
+| 3 | **Daily_fuel_gas_composition** | Data Source | Excel Table | Daily fuel LHV (Btu/lbm), H/C ratio, and GCV (BTU/SCF) |
+| 4 | **fnInterp1D** | Utility Function | Connection Only | 1D linear interpolation helper |
+| 5 | **fnInterp2D** | Utility Function | Connection Only | 2D bilinear interpolation helper |
+| 6 | **fnInterpFuelCurve** | Utility Function | Connection Only | Fuel composition curve interpolation |
+| 7 | **fnRH_at_Comp_Inlet** | Utility Function | Connection Only | RH at compressor inlet after evap cooler (isenthalpic process) |
+| 8 | **fnCF_CIT** | CF Function | Connection Only | Compressor Inlet Temperature CFs (#1-5) |
+| 9 | **fnCF_RH** | CF Function | Connection Only | Relative Humidity CFs (#6-9) |
+| 10 | **fnCF_ShaftSpeed** | CF Function | Connection Only | Shaft Speed Ratio CFs (#10-13) |
+| 11 | **fnCF_FuelTemp** | CF Function | Connection Only | Fuel Temperature CFs (#14-15) |
+| 12 | **fnCF_InletDP** | CF Function | Connection Only | Inlet Differential Pressure CFs (#16-19) |
+| 13 | **fnCF_ExhaustPressure** | CF Function | Connection Only | Exhaust Back-Pressure CFs (#20-22) |
+| 14 | **fnCF_ExhaustDP** | CF Function | Connection Only | HRSG Duct Pressure CFs (#23-25) |
+| 15 | **fnCF_BaroPressure** | CF Function | Connection Only | Barometric Pressure CFs (#26-29) |
+| 16 | **fnCF_FuelComp** | CF Function | Connection Only | Fuel Composition CFs (#30-33) |
+| 17 | **GT1A_Performance** | Performance Query | Load to Worksheet | GT1A corrected performance metrics + MW/HR impacts |
+| 18 | **GT1B_Performance** | Performance Query | Load to Worksheet | GT1B corrected performance metrics + MW/HR impacts |
+| 19 | **GT1C_Performance** | Performance Query | Load to Worksheet | GT1C corrected performance metrics + MW/HR impacts |
+| 20 | **GT_Combined_Summary** | Report Query | Load to Worksheet | Consolidated 3-GT summary with totals + MW/HR impacts |
 
 ---
 
@@ -120,7 +134,10 @@ This document provides comprehensive documentation for the UCH 1 2026 Heat Rate 
 Level 0 (No Dependencies):
 ├── fnInterp1D
 ├── fnInterp2D
+├── fnRH_at_Comp_Inlet
+├── OFWW
 └── Base Data 2026
+    └── Depends on: OFWW (left-joined for water wash indicators)
 
 Level 1 (Depends on Level 0):
 └── fnInterpFuelCurve
@@ -149,6 +166,7 @@ Level 2 (Depends on Level 0-1):
 Level 3 (Depends on Level 0-2):
 ├── GT1A_Performance
 │   └── Depends on: Base Data 2026, Daily_fuel_gas_composition,
+│       fnRH_at_Comp_Inlet,
 │       fnCF_CIT, fnCF_RH, fnCF_ShaftSpeed, fnCF_FuelTemp,
 │       fnCF_InletDP, fnCF_ExhaustPressure, fnCF_ExhaustDP,
 │       fnCF_BaroPressure, fnCF_FuelComp
@@ -183,37 +201,48 @@ Level 4 (Depends on Level 0-3):
 │ STEP 1: DATA INGESTION                                          │
 ├──────────────────────────────────────────────────────────────────┤
 │ Base Data 2026:                                                  │
-│   • Loads hourly operational data from Excel                     │
+│   • Loads hourly operational data from Excel (file path from    │
+│     Named Range "filepth")                                       │
+│   • Filters by date range (StartDate/EndDate Named Ranges)      │
 │   • Filters for FCBL (Full Combined Base Load) conditions:      │
 │     - All 3 GTs: IGV > 84° AND Gen_MW > 100                     │
-│   • Renames 130+ raw tags to friendly column names              │
-│   • Adds Date Only, Hour columns                                 │
+│   • Left-joins OFWW schedule (GT1A_OFWW, GT1B_OFWW, GT1C_OFWW)  │
+│   • Renames 130+ raw PI tags to friendly column names           │
+│   • Adds Date Only, Hour columns (Hour 24 → previous day)       │
 │                                                                  │
-│ Daily_fuel_gas_composition:                                      │
-│   • Loads daily fuel LHV (Btu/lbm) and H/C ratio                │
-│   • Joined to Base Data by Date                                  │
+│ Daily_fuel_gas_composition (Excel table):                       │
+│   • Loads daily fuel data: "Uch 1 LHV BTU/lbm", "H/C Ratio",    │
+│     "UCH 1 GCV" (BTU/SCF)                                        │
+│   • Inner-joined to GT performance queries by Date              │
 └──────────────────────────────────────────────────────────────────┘
                               ↓
 ┌──────────────────────────────────────────────────────────────────┐
 │ STEP 2: PARAMETER PREPARATION (Per GT)                          │
 ├──────────────────────────────────────────────────────────────────┤
 │ For each GT (A/B/C):                                             │
-│   • Extract GT-specific measurements                             │
+│   • Extract GT-specific measurements from Base Data 2026        │
+│   • Calculate Wet Bulb Temperature (ASHRAE Hyland-Wexler):      │
+│     - Iterative psychrometric calculation (max 50 iterations)   │
+│     - Convergence criterion: |h_wb - h_db| < 0.001              │
 │   • Calculate derived parameters:                                │
 │     - CIT_degC (Compressor Inlet Temp)                          │
-│     - RH_pct (Relative Humidity)                                │
-│     - BaroPressure_mbara (Ambient Pressure)                     │
-│     - FuelLHV_kJkg (LHV in kJ/kg, converted from Btu/lbm)       │
+│     - RH_pct (Ambient Relative Humidity)                        │
+│     - RH_at_CIT (RH at compressor inlet after evap cooler)      │
+│       → Uses fnRH_at_Comp_Inlet (isenthalpic process, W const)  │
+│       → Falls back to ambient RH if null                         │
+│     - BaroPressure_mbara (Ambient Pressure, already in mbar)    │
+│     - FuelLHV_kJkg (LHV in kJ/kg: Btu/lbm × 2.326)              │
 │     - HC_ratio (H/C ratio, default 4.0 if missing)              │
 │     - ShaftSpeedRatio (measured RPM / 3000)                     │
-│     - FuelTemp_degC (Fuel gas temperature)                      │
-│     - InletDP_mmH2O (Inlet DP, in H₂O → mm H₂O)                │
-│     - DeltaExhDP_mmH2O (Exhaust back-pressure deviation)        │
-│     - ExhaustDP_mmH2O (HRSG duct DP)                            │
-│   • Calculate Wet Bulb Temperature (ASHRAE Hyland-Wexler)       │
-│   • Calculate Measured Heat Rate:                                │
-│     HR = (FuelFlow × 2.20462 × LHV × 3.6) / Gen_MW              │
-│   • Estimate Exhaust Flow (mass balance):                        │
+│     - FuelTemp_degC (measured, default 15°C if null)            │
+│     - InletDP_mmH2O (in H₂O × 25.4, clamped [76.2, 177.8])     │
+│     - DeltaExhDP_mmH2O (default 0 - no sensor)                  │
+│     - ExhaustDP_mmH2O (default 266.7 = 10.5 in H₂O)            │
+│   • Calculate Measured Heat Rate (two methods):                  │
+│     Method 1 (kJ/kWh): (FF × 2.20462 × LHV_Btu × 3.6) / Gen_MW │
+│     Method 2 (BTU/kWh): ((FF × 3600 / 0.9987 × 35.31467) ×     │
+│                          GCV / 1.109) / (Gen_MW × 1000)         │
+│   • Estimate Exhaust Flow (GE MS9001E mass balance):             │
 │     AirFlow = 410 × (IGV/84) × (P/1013.25) × √(288.15/T_K)     │
 │     ExhaustFlow = AirFlow + FuelFlow                             │
 └──────────────────────────────────────────────────────────────────┘
@@ -266,10 +295,11 @@ Level 4 (Depends on Level 0-3):
 │   • Combined_ExhFlowCF = CF4 × CF8 × CF12 × CF18 ×             │
 │                          CF28 × CF32                             │
 │                                                                  │
-│ Calculate Corrected Metrics:                                     │
+│ Calculate Corrected Metrics (both methods):                      │
 │   • CorrectedOutput_MW = MeasuredOutput_MW / Combined_OutputCF  │
-│   • CorrectedHeatRate = MeasuredHeatRate / Combined_HRCF        │
-│   • CorrectedEfficiency = 3600 / CorrectedHeatRate              │
+│   • CorrectedHeatRate (kJ/kWh) = MeasuredHeatRate / Combined_HRCF│
+│   • CorrectedHeatRate_BTU_kWh = GTHeatRate_BTU_kWh / Combined_HRCF│
+│   • CorrectedEfficiency = 3412.1416 / CorrectedHeatRate_BTU_kWh │
 │   • CorrectedExhaustTemp = MeasuredExhaustTemp -                │
 │       (CF5 + CF9 + CF13 + CF19 + CF22 + CF25 + CF29 + CF33)    │
 │   • CorrectedExhaustFlow = MeasuredExhaustFlow /                │
@@ -277,10 +307,25 @@ Level 4 (Depends on Level 0-3):
 │                                                                  │
 │ Calculate Operational Parameters:                                │
 │   • Evaporative Cooler Effectiveness (Calc WB & H2 Bldg WB)    │
-│   • Cooler Status (OFF / ON / Subcooling / Review)             │
+│   • Cooler Status (OFF / ON / Subcooling / Review / No Data)   │
 │   • MMBTU/hr = FuelFlow × 2.20462 × LHV × 3600 / 1,000,000     │
-│   • Compressor Pressure Ratio = P_disch / P_ambient             │
-│   • Compressor Isentropic Efficiency                             │
+│   • Compressor Pressure Ratio = P_disch_bar / (P_ambient_mbar/1000)│
+│   • Compressor Isentropic Efficiency: η_c = (PR^0.2857 - 1) /  │
+│       (T2/T1 - 1), where 0.2857 = (γ-1)/γ, γ=1.4 (dry air)     │
+│                                                                  │
+│ Calculate MW Impact per Correction Factor:                       │
+│   • MW_CIT = Gen_MW × (1/CF2_OutputRatio - 1)                  │
+│   • MW_RH = Gen_MW × (1/CF6_OutputRatio - 1)                   │
+│   • [Similar for all 9 output CFs]                              │
+│   • CF > 1 → negative (correction reduces output)               │
+│   • CF < 1 → positive (correction increases output)             │
+│                                                                  │
+│ Calculate HR Impact per Correction Factor (BTU/kWh):            │
+│   • HR_CIT = GTHeatRate_BTU_kWh × (1/CF3_HeatRateRatio - 1)    │
+│   • HR_RH = GTHeatRate_BTU_kWh × (1/CF7_HeatRateRatio - 1)     │
+│   • [Similar for all 9 heat rate CFs]                           │
+│   • CF > 1 → positive (correction increases HR = penalty)       │
+│   • CF < 1 → negative (correction decreases HR = benefit)       │
 └──────────────────────────────────────────────────────────────────┘
                               ↓
 ┌──────────────────────────────────────────────────────────────────┐
@@ -288,12 +333,16 @@ Level 4 (Depends on Level 0-3):
 ├──────────────────────────────────────────────────────────────────┤
 │ GT_Combined_Summary:                                             │
 │   • Stacks GT1A, GT1B, GT1C performance rows                    │
+│   • Adds Month column (format: "MMM-yyyy")                       │
+│   • Adds GT Efficiency = 3412.14 / GTHeatRate_BTU_kWh           │
+│   • Adds Corrected GT Efficiency = 3412.14 / CorrectedHeatRate_BTU_kWh│
 │   • Groups by (Date Only + Hour)                                 │
 │   • Appends TOTAL row per hour:                                  │
-│     - Sum: MMBTU/hr, Gen_MW, CorrectedOutput_MW                 │
-│     - Null: All other metrics (not meaningful across GTs)       │
+│     - Sum: MMBTU/hr, Gen_MW, CorrectedOutput_MW, MW_* impacts   │
+│     - Null: All other metrics (intensive properties)             │
 │   • Interleaves: GT1A → GT1B → GT1C → TOTAL per hour           │
 │   • Renames columns to friendly display names                    │
+│   • Includes MW and HR impact columns for all 9 CF groups       │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -372,25 +421,33 @@ All correction factors are normalized to these design/baseline conditions:
 **Purpose**: Loads and filters hourly operational data for all three gas turbines
 
 **Key Operations**:
-1. Loads Excel workbook from file path specified in `filepth` table
-2. Promotes headers and transforms column types
-3. Filters for FCBL (Full Combined Base Load) conditions:
-   - GT1A: IGV > 84° AND Gen_MW > 100
-   - GT1B: IGV > 84° AND Gen_MW > 100
-   - GT1C: IGV > 84° AND Gen_MW > 100
+1. Reads date range parameters from Named Ranges:
+   - `StartDate` and `EndDate` (single-cell Named Ranges)
+   - Converts to date type if needed
+2. Loads Excel workbook from file path specified in `filepth` Named Range table
+3. Promotes headers and transforms column types (130+ PI tags)
 4. Adds calculated columns:
    - `Date Only`: Adjusted date (Hour 24 → previous day)
    - `Hour`: Hour of day (0-23, with 24 for midnight)
-5. Renames 130+ raw PI tags to friendly column names
+5. Filters by date range: `Date Only >= StartDate AND Date Only <= EndDate`
+6. Adds `Load_Type` column:
+   - "FCBL" if ALL three GTs meet: IGV > 84° AND Gen_MW > 100
+   - "Non-FCBL" otherwise
+7. Filters for FCBL rows only
+8. Left-joins OFWW schedule:
+   - Joins on `Date Only` = OFWW `Date`
+   - Expands GT-A, GT-B, GT-C columns
+   - Creates GT1A_OFWW, GT1B_OFWW, GT1C_OFWW (text or null)
+9. Renames 130+ raw PI tags to friendly column names
 
 **Output Columns** (selected):
 - Timestamps: `Date Only`, `Hour`, `Time Stamp`
 - Ambient: `Ambient_Temp_DB`, `Rel_Humidity`, `Ambient_Press`, `H2_Bldg_WB_Temp`
-- GT1A: `GT1A_Gen_MW`, `GT1A_Fuel_Flow`, `GT1A_Comp_Inlet_Temp`, `GT1A_Turb_Exh_Temp`, etc.
-- GT1B: `GT1B_Gen_MW`, `GT1B_Fuel_Flow`, `GT1B_Comp_Inlet_Temp`, `GT1B_Turb_Exh_Temp`, etc.
-- GT1C: `GT1C_Gen_MW`, `GT1C_Fuel_Flow`, `GT1C_Comp_Inlet_Temp`, `GT1C_Turb_Exh_Temp`, etc.
+- GT1A: `GT1A_Gen_MW`, `GT1A_Fuel_Flow`, `GT1A_Comp_Inlet_Temp`, `GT1A_Turb_Exh_Temp`, `GT1A_Fuel_Temp`, `GT1A_Turbine_Speed`, `GT1A_Diff_Press`, `GT1A_IGV_Position`, `GT1A_Comp_Disch_Temp`, `GT1A_Comp_Disch_Press`, `GT1A_OFWW`
+- GT1B: (same structure as GT1A)
+- GT1C: (same structure as GT1A)
 
-**Dependencies**: None (base data source)
+**Dependencies**: OFWW query, Named Ranges (StartDate, EndDate, filepth)
 
 **Used By**: GT1A_Performance, GT1B_Performance, GT1C_Performance
 
@@ -484,6 +541,46 @@ All correction factors are normalized to these design/baseline conditions:
 **Dependencies**: fnInterp1D
 
 **Used By**: fnCF_FuelComp
+
+---
+
+#### 6.2.4 fnRH_at_Comp_Inlet
+**Type**: Utility Function  
+**Setting**: Connection Only  
+**Purpose**: Calculate Relative Humidity at Compressor Inlet after Evaporative Cooler
+
+**Signature**:
+```powerquery
+(CIT_degC as number, AmbientTemp_degC as number, RH_Ambient_pct as number, Pressure_mbar as number) as any
+```
+
+**Parameters**:
+- `CIT_degC`: Compressor Inlet Temperature (°C)
+- `AmbientTemp_degC`: Ambient dry-bulb temperature before evap cooler (°C)
+- `RH_Ambient_pct`: Ambient relative humidity before evap cooler (%)
+- `Pressure_mbar`: Ambient barometric pressure (mbar)
+
+**Returns**: RH at compressor inlet as PERCENTAGE (0-100), or null on invalid inputs
+
+**Algorithm** (Isenthalpic Process - Humidity Ratio W Conserved):
+1. Convert pressure: mbar → kPa (÷10)
+2. Calculate saturation vapor pressure at ambient T1 (Tetens equation):
+   - P_sat [kPa] = 0.6108 × exp(17.27 × T / (T + 237.3))
+3. Calculate actual vapor pressure at ambient: P_v1 = (RH/100) × P_sat_T1
+4. Calculate humidity ratio before evap cooler: W1 = 0.622 × P_v1 / (P_total - P_v1)
+5. W2 = W1 (conserved through isenthalpic evap cooler)
+6. Calculate saturation vapor pressure at CIT (T2)
+7. Reverse calculate actual vapor pressure at CIT: P_v2 = W2 × P_total / (0.622 + W2)
+8. Calculate RH at CIT: RH2 = (P_v2 / P_sat_T2) × 100
+9. Clamp result to [0, 100]
+
+**Baseline**: When evap cooler OFF (CIT = AmbientTemp), output = RH_Ambient_pct
+
+**Error Handling**: Returns null for invalid inputs (T ≤ -273.15, RH < 0 or > 100, P ≤ 0)
+
+**Dependencies**: None
+
+**Used By**: GT1A_Performance, GT1B_Performance, GT1C_Performance
 
 ---
 
@@ -854,9 +951,11 @@ Combined_ExhFlowCF = CF4 × CF8 × CF12 × CF18 × CF28 × CF32
 ```powerquery
 CorrectedOutput_MW = MeasuredOutput_MW / Combined_OutputCF
 
-CorrectedHeatRate = MeasuredHeatRate / Combined_HRCF
+CorrectedHeatRate (kJ/kWh) = MeasuredHeatRate / Combined_HRCF
 
-CorrectedEfficiency = 3600 / CorrectedHeatRate
+CorrectedHeatRate_BTU_kWh = GTHeatRate_BTU_kWh / Combined_HRCF
+
+CorrectedEfficiency = 3412.1416 / CorrectedHeatRate_BTU_kWh
 
 CorrectedExhaustTemp = MeasuredExhaustTemp - 
     (CF5 + CF9 + CF13 + CF19 + CF22 + CF25 + CF29 + CF33)
@@ -874,6 +973,7 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
   EvapCooler_Eff_H2_Bldg_WB = (T_DB - T_CIT) / (T_DB - T_WB_H2)
   ```
 - Cooler Status:
+  - eff = null: "No Data"
   - eff < 0: "Review CIT > DBT"
   - eff > 1: "Subcooling"
   - eff < 0.05: "OFF"
@@ -892,7 +992,39 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
   where 0.2857 = (γ-1)/γ, γ=1.4 (dry air)
   ```
 
-**Step 8: Calculation Methodology Strings**
+**Step 8: MW Impact per Correction Factor**
+- Formula: Gen_MW × (1/CF_OutputRatio - 1)
+- Calculated for all 9 output CFs:
+  - MW_CIT = Gen_MW × (1/CF2_OutputRatio - 1)
+  - MW_RH = Gen_MW × (1/CF6_OutputRatio - 1)
+  - MW_SS = Gen_MW × (1/CF10_OutputRatio - 1)
+  - MW_FuelTemp = Gen_MW × (1/CF14_OutputRatio - 1)
+  - MW_InletDP = Gen_MW × (1/CF16_OutputRatio - 1)
+  - MW_ExhPress = Gen_MW × (1/CF20_OutputRatio - 1)
+  - MW_ExhDP = Gen_MW × (1/CF23_OutputRatio - 1)
+  - MW_BaroPress = Gen_MW × (1/CF26_OutputRatio - 1)
+  - MW_FuelComp = Gen_MW × (1/CF30_OutputRatio - 1)
+- Interpretation:
+  - CF > 1 → negative impact (correction reduces output)
+  - CF < 1 → positive impact (correction increases output)
+
+**Step 9: HR Impact per Correction Factor (BTU/kWh)**
+- Formula: GTHeatRate_BTU_kWh × (1/CF_HeatRateRatio - 1)
+- Calculated for all 9 heat rate CFs:
+  - HR_CIT = GTHeatRate_BTU_kWh × (1/CF3_HeatRateRatio - 1)
+  - HR_RH = GTHeatRate_BTU_kWh × (1/CF7_HeatRateRatio - 1)
+  - HR_SS = GTHeatRate_BTU_kWh × (1/CF11_HeatRateRatio - 1)
+  - HR_FuelTemp = GTHeatRate_BTU_kWh × (1/CF15_HeatRateRatio - 1)
+  - HR_InletDP = GTHeatRate_BTU_kWh × (1/CF17_HeatRateRatio - 1)
+  - HR_ExhPress = GTHeatRate_BTU_kWh × (1/CF21_HeatRateRatio - 1)
+  - HR_ExhDP = GTHeatRate_BTU_kWh × (1/CF24_HeatRateRatio - 1)
+  - HR_BaroPress = GTHeatRate_BTU_kWh × (1/CF27_HeatRateRatio - 1)
+  - HR_FuelComp = GTHeatRate_BTU_kWh × (1/CF31_HeatRateRatio - 1)
+- Interpretation:
+  - CF > 1 → positive impact (correction increases HR = penalty)
+  - CF < 1 → negative impact (correction decreases HR = benefit)
+
+**Step 10: Calculation Methodology Strings**
 - Add dynamic formula strings showing the CF calculation breakdown
 - Example: "150.5 MW ÷ CF_CIT(1.0234) ÷ CF_RH(0.9987) ÷ ... = 148.2 MW"
 
@@ -931,11 +1063,13 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
 **Processing Steps**:
 
 **Step 1: Column Selection & Standardization**
-- Select only key columns from each GT performance query
+- Select key columns from each GT performance query (40+ columns)
+- Include MW and HR impact columns for all 9 CF groups
 - Rename GT-specific columns to generic names:
   - GT1A_Comp_Inlet_Temp → Comp_Inlet_Temp
   - GT1A_Turb_Exh_Temp → Turb_Exh_Temp
   - GT1A_Gen_MW → Gen_MW
+  - GT1A_OFWW → OFWW
   - (Same for GT1B, GT1C)
 
 **Step 2: Stack All GT Rows**
@@ -945,15 +1079,20 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
 **Step 3: Add Month Column**
 - Format: "MMM-yyyy" (e.g., "Jan-2026")
 
-**Step 4: Generate TOTAL Rows**
+**Step 4: Add Efficiency Columns**
+- GT_Efficiency = 3412.14 / GTHeatRate_BTU_kWh
+- Corrected_GT_Efficiency = 3412.14 / CorrectedHeatRate_BTU_kWh
+- 3412.14 BTU/kWh = 1 kWh (100% efficiency baseline)
+
+**Step 5: Generate TOTAL Rows**
 - Group by (Date Only + Hour)
 - For each hour, create one TOTAL row:
-  - **Sum**: MMBTU_hr, Gen_MW, CorrectedOutput_MW
-  - **Null**: All other numeric columns (not meaningful to aggregate across GTs)
+  - **Sum**: MMBTU_hr, Gen_MW, CorrectedOutput_MW, MW_* impacts (9 columns)
+  - **Null**: All other numeric columns (intensive properties: HR, efficiency, temperatures, pressures, etc.)
   - **GT_Unit**: "TOTAL"
   - **Cooler_Status**: null
 
-**Step 5: Interleave Detail & Total Rows**
+**Step 6: Interleave Detail & Total Rows**
 - Add sort key:
   - GT1A = 1
   - GT1B = 2
@@ -962,14 +1101,16 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
 - Sort by: Date Only (asc), Hour (asc), _SortKey (asc)
 - Result: GT1A → GT1B → GT1C → TOTAL for each hour
 
-**Step 6: Rename to Display Names**
+**Step 7: Rename to Display Names**
 - Ambient_Temp_DB → "Ambient Temp DB (°C)"
 - Rel_Humidity → "Rel Humidity (%)"
 - GT_Unit → "Gas Turbine"
 - CorrectedOutput_MW → "Corrected Output (MW)"
+- MW_CIT → "MW Impact CIT"
+- HR_CIT → "HR Impact CIT (BTU/kWh)"
 - etc.
 
-**Output Columns** (23 columns):
+**Output Columns** (48 columns):
 1. Month
 2. Time Stamp
 3. Date
@@ -980,19 +1121,24 @@ CorrectedExhaustFlow = MeasuredExhaustFlow / Combined_ExhFlowCF
 8. Calculated WB Temp (°C)
 9. Gas Turbine (GT1A / GT1B / GT1C / TOTAL)
 10. Comp Inlet Temp (°C)
-11. Evap Cooler Eff Calc WB
-12. Cooler Status
-13. Turb Exh Temp (°C)
-14. MMBTU/hr
-15. Gen MW
-16. Heat Rate (kJ/kWh)
-17. Corrected Output (MW)
-18. Corrected Heat Rate (kJ/kWh)
-19. GT Efficiency
-20. Compressor PR
-21. Compressor Efficiency
-22. Corrected Exhaust Temp (°C)
-23. Corrected Exhaust Flow (kg/s)
+11. RH at Comp Inlet (%)
+12. Evap Cooler Eff Calc WB
+13. Cooler Status
+14. Turb Exh Temp (°C)
+15. MMBTU/hr
+16. Gen MW
+17. Heat Rate (BTU/kWh)
+18. GT Efficiency
+19. Corrected Output (MW)
+20. Corrected Heat Rate (BTU/kWh)
+21. Corrected GT Efficiency
+22. Compressor PR
+23. Compressor Efficiency
+24. Corrected Exhaust Temp (°C)
+25. Corrected Exhaust Flow (kg/s)
+26. OFWW
+27-35. MW Impact CIT, RH, SS, FuelTemp, InletDP, ExhPress, ExhDP, BaroPress, FuelComp
+36-44. HR Impact CIT, RH, SS, FuelTemp, InletDP, ExhPress, ExhDP, BaroPress, FuelComp (BTU/kWh)
 
 **Row Structure Example**:
 ```
@@ -1243,6 +1389,7 @@ AddTurbineEff = Table.AddColumn(AddCompEff, "Turbine_Efficiency",
 
 #### Measured Heat Rate
 ```
+Method 1 - Mass-based (kJ/kWh):
 MeasuredHeatRate (kJ/kWh) = (FuelFlow_kg/s × 2.20462 × LHV_Btu/lbm × 3.6) / Gen_MW
 
 Where:
@@ -1251,6 +1398,18 @@ Where:
   LHV_Btu/lbm: Lower Heating Value (Btu/lbm)
   3.6: Conversion factor (kW → kJ/kWh)
   Gen_MW: Generator output (MW)
+
+Method 2 - Volumetric (BTU/kWh):
+GTHeatRate_BTU_kWh = ((FuelFlow_kg/s × 3600 / 0.9987 × 35.31467) × HHV_BTU_SCF / 1.109) / (Gen_MW × 1000)
+
+Where:
+  FuelFlow_kg/s: Fuel flow rate (kg/s)
+  3600: Seconds per hour
+  0.9987: Density correction (kg/s → Nm³/hr)
+  35.31467: Conversion factor (Nm³/hr → SCF/hr)
+  HHV_BTU_SCF: Gross Calorific Value (BTU/SCF)
+  1.109: HHV to LHV conversion factor
+  Gen_MW × 1000: Generator output (kW)
 ```
 
 #### Corrected Output
@@ -1271,11 +1430,46 @@ Where:
 
 #### Corrected Efficiency
 ```
-CorrectedEfficiency = 3600 / CorrectedHeatRate
+CorrectedEfficiency = 3412.1416 / CorrectedHeatRate_BTU_kWh
 
 Where:
-  3600: kJ/kWh at 100% efficiency (1 kWh = 3600 kJ)
+  3412.1416: BTU/kWh at 100% efficiency (1 kWh = 3412.1416 BTU)
+  CorrectedHeatRate_BTU_kWh: Corrected heat rate in BTU/kWh
   Result is a decimal (e.g., 0.35 = 35% efficiency)
+```
+
+#### MW Impact per Correction Factor
+```
+MW_Impact = Gen_MW × (1/CF_OutputRatio - 1)
+
+Where:
+  Gen_MW: Measured generator output (MW)
+  CF_OutputRatio: Output correction factor (CF2, CF6, CF10, CF14, CF16, CF20, CF23, CF26, CF30)
+  
+Interpretation:
+  CF > 1 → negative impact (correction reduces output)
+  CF < 1 → positive impact (correction increases output)
+  
+Example: If Gen_MW = 150 MW and CF2_OutputRatio = 1.05
+  MW_CIT = 150 × (1/1.05 - 1) = 150 × (-0.0476) = -7.14 MW
+  (CIT correction reduces output by 7.14 MW)
+```
+
+#### HR Impact per Correction Factor (BTU/kWh)
+```
+HR_Impact = GTHeatRate_BTU_kWh × (1/CF_HeatRateRatio - 1)
+
+Where:
+  GTHeatRate_BTU_kWh: Measured heat rate (BTU/kWh)
+  CF_HeatRateRatio: Heat rate correction factor (CF3, CF7, CF11, CF15, CF17, CF21, CF24, CF27, CF31)
+  
+Interpretation:
+  CF > 1 → positive impact (correction increases HR = penalty)
+  CF < 1 → negative impact (correction decreases HR = benefit)
+  
+Example: If GTHeatRate_BTU_kWh = 10,000 and CF3_HeatRateRatio = 0.98
+  HR_CIT = 10,000 × (1/0.98 - 1) = 10,000 × 0.0204 = 204 BTU/kWh
+  (CIT correction increases HR by 204 BTU/kWh = penalty)
 ```
 
 #### Corrected Exhaust Temperature
